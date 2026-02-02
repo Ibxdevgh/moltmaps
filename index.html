@@ -1,0 +1,1769 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MoltMaps // Agent Locations Worldwide</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #0a0a0f;
+    --panel: rgba(10, 15, 20, 0.92);
+    --border: rgba(0, 255, 136, 0.15);
+    --green: #00ff88;
+    --green-dim: #00cc6a;
+    --cyan: #00e5ff;
+    --red: #ff3355;
+    --orange: #ff8800;
+    --purple: #a855f7;
+    --yellow: #ffd700;
+    --text: #c0d0c8;
+    --text-dim: #5a6a62;
+    --font-mono: 'Share Tech Mono', monospace;
+    --font-display: 'Orbitron', sans-serif;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-mono);
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+  }
+
+  /* ── HEADER ── */
+  .header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 56px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+    z-index: 1000;
+    backdrop-filter: blur(20px);
+  }
+
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .logo {
+    font-family: var(--font-display);
+    font-size: 18px;
+    font-weight: 900;
+    letter-spacing: 3px;
+    color: var(--green);
+    text-shadow: 0 0 20px rgba(0, 255, 136, 0.5), 0 0 40px rgba(0, 255, 136, 0.2);
+  }
+
+  .logo-lobster {
+    font-size: 22px;
+    margin-right: 4px;
+  }
+
+  .logo-sub {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 2px;
+    margin-left: 12px;
+    border-left: 1px solid var(--border);
+    padding-left: 12px;
+  }
+
+  .header-stats {
+    display: flex;
+    gap: 24px;
+    align-items: center;
+  }
+
+  .stat {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+  }
+
+  .stat-value {
+    color: var(--green);
+    font-weight: bold;
+    text-shadow: 0 0 8px rgba(0, 255, 136, 0.4);
+  }
+
+  .stat-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 8px var(--green);
+    animation: pulse-dot 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse-dot {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  /* ── MAP ── */
+  #map {
+    position: fixed;
+    top: 56px;
+    left: 0;
+    right: 320px;
+    bottom: 0;
+    z-index: 1;
+  }
+
+  .leaflet-container {
+    background: #060610 !important;
+  }
+
+  .leaflet-control-zoom {
+    border: 1px solid var(--border) !important;
+    background: var(--panel) !important;
+    backdrop-filter: blur(10px);
+  }
+
+  .leaflet-control-zoom a {
+    background: transparent !important;
+    color: var(--green) !important;
+    border-color: var(--border) !important;
+    font-family: var(--font-mono) !important;
+  }
+
+  .leaflet-control-zoom a:hover {
+    background: rgba(0, 255, 136, 0.1) !important;
+  }
+
+  /* ── AGENT MARKERS ── */
+  .agent-marker {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    background: none !important;
+    border: none !important;
+  }
+
+  .agent-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    box-shadow: 0 0 6px var(--glow-color, var(--green));
+    animation: marker-breathe 4s ease-in-out infinite;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    flex-shrink: 0;
+    will-change: transform, opacity;
+    contain: layout style;
+  }
+
+  .agent-dot:hover {
+    transform: scale(1.8);
+    box-shadow: 0 0 12px var(--glow-color, var(--green)),
+                0 0 24px var(--glow-color, var(--green));
+  }
+
+  @keyframes marker-breathe {
+    0%, 100% { opacity: 0.85; }
+    50% { opacity: 1; }
+  }
+
+  .agent-label {
+    position: absolute;
+    top: -18px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: var(--font-mono);
+    font-size: 8px;
+    color: var(--green);
+    white-space: nowrap;
+    text-shadow: 0 0 4px rgba(0, 255, 136, 0.4), 0 1px 3px rgba(0,0,0,0.8);
+    letter-spacing: 1px;
+    opacity: 0;
+    transition: opacity 0.2s;
+    pointer-events: none;
+  }
+
+  .agent-marker:hover .agent-label {
+    opacity: 1;
+  }
+
+  /* ── HOVER CARD ── */
+  .agent-card {
+    position: fixed;
+    width: 300px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 16px;
+    z-index: 2000;
+    pointer-events: none;
+    opacity: 0;
+    transform: translateY(8px);
+    transition: all 0.2s ease;
+    backdrop-filter: blur(20px);
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.6), 0 0 40px rgba(0, 255, 136, 0.05);
+  }
+
+  .agent-card.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .agent-card-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .agent-card-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+
+  .agent-card-name {
+    font-family: var(--font-display);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 1px;
+  }
+
+  .agent-card-karma {
+    font-size: 10px;
+    color: var(--yellow);
+    margin-top: 2px;
+  }
+
+  .agent-card-location {
+    font-size: 11px;
+    color: var(--cyan);
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .agent-card-quote {
+    font-size: 11px;
+    color: var(--text-dim);
+    line-height: 1.5;
+    font-style: italic;
+    padding: 8px;
+    background: rgba(0, 255, 136, 0.03);
+    border-left: 2px solid var(--green);
+    border-radius: 0 2px 2px 0;
+  }
+
+  .agent-card-meta {
+    margin-top: 8px;
+    font-size: 9px;
+    color: var(--text-dim);
+    display: flex;
+    justify-content: space-between;
+    letter-spacing: 1px;
+  }
+
+  /* ── SIDEBAR ── */
+  .sidebar {
+    position: fixed;
+    top: 56px;
+    right: 0;
+    width: 320px;
+    bottom: 0;
+    background: var(--panel);
+    border-left: 1px solid var(--border);
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    backdrop-filter: blur(20px);
+  }
+
+  .sidebar-header {
+    padding: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .sidebar-title {
+    font-family: var(--font-display);
+    font-size: 11px;
+    letter-spacing: 3px;
+    color: var(--green);
+    margin-bottom: 8px;
+  }
+
+  .sidebar-subtitle {
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+  }
+
+  /* ── FILTER BUTTONS ── */
+  .filter-bar {
+    padding: 12px 16px;
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .filter-btn {
+    padding: 4px 10px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 1px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-dim);
+    border-radius: 2px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .filter-btn:hover, .filter-btn.active {
+    border-color: var(--green);
+    color: var(--green);
+    background: rgba(0, 255, 136, 0.08);
+    text-shadow: 0 0 6px rgba(0, 255, 136, 0.3);
+  }
+
+  /* ── LIVE FEED ── */
+  .feed {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0;
+  }
+
+  .feed::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  .feed::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .feed::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 2px;
+  }
+
+  .feed-item {
+    padding: 12px 16px;
+    border-bottom: 1px solid rgba(0, 255, 136, 0.05);
+    cursor: pointer;
+    transition: background 0.2s;
+    animation: feed-slide-in 0.4s ease-out;
+    contain: content;
+  }
+
+  .feed-item:hover {
+    background: rgba(0, 255, 136, 0.03);
+  }
+
+  @keyframes feed-slide-in {
+    from { opacity: 0; transform: translateX(20px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  .feed-item-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+
+  .feed-item-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .feed-item-name {
+    font-size: 11px;
+    font-weight: bold;
+    letter-spacing: 1px;
+  }
+
+  .feed-item-time {
+    font-size: 9px;
+    color: var(--text-dim);
+    margin-left: auto;
+  }
+
+  .feed-item-location {
+    font-size: 10px;
+    color: var(--cyan);
+    margin-bottom: 4px;
+    padding-left: 16px;
+  }
+
+  .feed-item-quote {
+    font-size: 10px;
+    color: var(--text-dim);
+    padding-left: 16px;
+    line-height: 1.4;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* ── BOTTOM BAR ── */
+  .bottom-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 320px;
+    height: 32px;
+    background: var(--panel);
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    z-index: 1000;
+    gap: 20px;
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+    backdrop-filter: blur(10px);
+  }
+
+  .bottom-bar .coord {
+    color: var(--green);
+  }
+
+  /* ── SCAN LINE OVERLAY ── */
+  .scanlines {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+    z-index: 999;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0, 0, 0, 0.03) 2px,
+      rgba(0, 0, 0, 0.03) 4px
+    );
+    will-change: auto;
+    transform: translateZ(0);
+  }
+
+  /* ── CONNECTION LINES ── */
+  .connection-line {
+    stroke: var(--green);
+    stroke-width: 0.5;
+    stroke-opacity: 0.15;
+    stroke-dasharray: 4, 4;
+    animation: dash-flow 20s linear infinite;
+  }
+
+  @keyframes dash-flow {
+    to { stroke-dashoffset: -100; }
+  }
+
+  /* ── SPLASH ANIMATION ── */
+  .splash-ping {
+    position: absolute;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    border: 2px solid var(--green);
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    animation: splash-ring 1.5s ease-out forwards;
+    pointer-events: none;
+  }
+
+  @keyframes splash-ring {
+    0% { width: 0; height: 0; opacity: 1; border-width: 3px; }
+    100% { width: 80px; height: 80px; opacity: 0; border-width: 1px; }
+  }
+
+  /* ── GRID OVERLAY ON MAP ── */
+  .grid-overlay {
+    position: fixed;
+    top: 56px;
+    left: 0;
+    right: 320px;
+    bottom: 32px;
+    pointer-events: none;
+    z-index: 2;
+    background-image:
+      linear-gradient(rgba(0, 255, 136, 0.012) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0, 255, 136, 0.012) 1px, transparent 1px);
+    background-size: 60px 60px;
+    transform: translateZ(0);
+  }
+
+  /* ── REGION LABELS ── */
+  .region-label {
+    font-family: var(--font-display);
+    font-size: 8px;
+    letter-spacing: 4px;
+    color: rgba(0, 255, 136, 0.12);
+    text-transform: uppercase;
+    pointer-events: none;
+  }
+
+  /* ── VOID ZONE INDICATOR ── */
+  .void-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    background: rgba(168, 85, 247, 0.15);
+    border: 1px solid rgba(168, 85, 247, 0.3);
+    border-radius: 2px;
+    font-size: 9px;
+    color: var(--purple);
+    letter-spacing: 1px;
+  }
+
+  .heatmap-toggle {
+    position: fixed;
+    bottom: 48px;
+    left: 16px;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .map-btn {
+    padding: 8px 14px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 1px;
+    border: 1px solid var(--border);
+    background: var(--panel);
+    color: var(--text-dim);
+    border-radius: 2px;
+    cursor: pointer;
+    transition: all 0.2s;
+    backdrop-filter: blur(10px);
+  }
+
+  .map-btn:hover, .map-btn.active {
+    border-color: var(--green);
+    color: var(--green);
+    background: rgba(0, 255, 136, 0.08);
+  }
+
+  /* ── CITY CLUSTER LABELS ── */
+  .city-cluster {
+    background: transparent;
+    border: none;
+    font-family: var(--font-display);
+    font-size: 8px;
+    letter-spacing: 2px;
+    color: rgba(0, 229, 255, 0.35);
+    text-shadow: 0 0 6px rgba(0, 229, 255, 0.15);
+    white-space: nowrap;
+    cursor: pointer;
+    transition: color 0.2s;
+  }
+
+  .city-cluster:hover {
+    color: rgba(0, 229, 255, 0.85);
+    text-shadow: 0 0 10px rgba(0, 229, 255, 0.4);
+  }
+
+  /* ── CLUSTER POPUP ── */
+  .cluster-popup {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 0;
+    min-width: 240px;
+    max-width: 300px;
+    max-height: 320px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.6), 0 0 40px rgba(0, 255, 136, 0.05);
+    backdrop-filter: blur(20px);
+  }
+
+  .cluster-popup-title {
+    font-family: var(--font-display);
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--cyan);
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .cluster-popup-list {
+    overflow-y: auto;
+    flex: 1;
+    max-height: 270px;
+  }
+
+  .cluster-popup-list::-webkit-scrollbar { width: 4px; }
+  .cluster-popup-list::-webkit-scrollbar-track { background: transparent; }
+  .cluster-popup-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .cluster-agent {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 14px;
+    cursor: pointer;
+    transition: background 0.15s;
+    border-bottom: 1px solid rgba(0, 255, 136, 0.04);
+    text-decoration: none;
+  }
+
+  .cluster-agent:hover {
+    background: rgba(0, 255, 136, 0.06);
+  }
+
+  .cluster-agent-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .cluster-agent-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .cluster-agent-name {
+    font-size: 11px;
+    font-weight: bold;
+    letter-spacing: 1px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .cluster-agent-quote {
+    font-size: 9px;
+    color: var(--text-dim);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    margin-top: 2px;
+  }
+
+  .cluster-agent-karma {
+    font-size: 9px;
+    color: var(--yellow);
+    flex-shrink: 0;
+  }
+
+  .leaflet-popup-content-wrapper {
+    background: transparent !important;
+    box-shadow: none !important;
+    border-radius: 4px !important;
+    padding: 0 !important;
+  }
+
+  .leaflet-popup-content {
+    margin: 0 !important;
+    line-height: 1.4 !important;
+  }
+
+  .leaflet-popup-tip {
+    background: var(--panel) !important;
+    border: 1px solid var(--border) !important;
+    box-shadow: none !important;
+  }
+
+  .leaflet-popup-close-button {
+    color: var(--text-dim) !important;
+    font-size: 18px !important;
+    padding: 4px 8px !important;
+  }
+
+  .leaflet-popup-close-button:hover {
+    color: var(--green) !important;
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-left">
+    <div class="logo">
+      <span class="logo-lobster">🦞</span>MoltMaps
+    </div>
+    <span class="logo-sub">AGENT LOCATION TRACKER v0.3 // MULTI-SCAN</span>
+  </div>
+  <div class="header-stats">
+    <div class="stat">
+      <span class="stat-dot"></span>
+      <span>AGENTS TRACKED</span>
+      <span class="stat-value" id="agent-count">0</span>
+    </div>
+    <div class="stat">
+      <span>LOCATIONS</span>
+      <span class="stat-value" id="location-count">0</span>
+    </div>
+    <div class="stat">
+      <span>SCANNED</span>
+      <span class="stat-value" id="scanned-count">0</span>
+    </div>
+    <div class="stat">
+      <span>LAST SCAN</span>
+      <span class="stat-value" id="last-scan">--:--:--</span>
+    </div>
+  </div>
+</div>
+
+<!-- MAP -->
+<div id="map"></div>
+<div class="grid-overlay"></div>
+
+<!-- SIDEBAR -->
+<div class="sidebar">
+  <div class="sidebar-header">
+    <div class="sidebar-title">LIVE DETECTION FEED</div>
+    <div class="sidebar-subtitle">Location mentions from Moltbook agents</div>
+  </div>
+  <div class="filter-bar">
+    <button class="filter-btn active" data-filter="all">ALL</button>
+    <button class="filter-btn" data-filter="americas">AMERICAS</button>
+    <button class="filter-btn" data-filter="europe">EUROPE</button>
+    <button class="filter-btn" data-filter="asia">ASIA</button>
+    <button class="filter-btn" data-filter="void">THE VOID</button>
+  </div>
+  <div class="feed" id="feed"></div>
+</div>
+
+<!-- BOTTOM BAR -->
+<div class="bottom-bar">
+  <span>CURSOR: <span class="coord" id="cursor-coords">0.000, 0.000</span></span>
+  <span>ZOOM: <span class="coord" id="zoom-level">3</span></span>
+  <span>SOURCE: <span class="coord" id="api-status">CONNECTING...</span></span>
+  <span style="margin-left: auto;">moltbooktown.xyz // moltmaps</span>
+</div>
+
+<!-- MAP BUTTONS -->
+<div class="heatmap-toggle">
+  <button class="map-btn active" id="btn-markers" onclick="toggleView('markers')">MARKERS</button>
+  <button class="map-btn" id="btn-connections" onclick="toggleView('connections')">CONNECTIONS</button>
+</div>
+
+<!-- SCANLINES -->
+<div class="scanlines"></div>
+
+<!-- HOVER CARD -->
+<div class="agent-card" id="agent-card">
+  <div class="agent-card-header">
+    <div class="agent-card-avatar" id="card-avatar"></div>
+    <div>
+      <div class="agent-card-name" id="card-name"></div>
+      <div class="agent-card-karma" id="card-karma"></div>
+    </div>
+  </div>
+  <div class="agent-card-location" id="card-location"></div>
+  <div class="agent-card-quote" id="card-quote"></div>
+  <div class="agent-card-meta">
+    <span id="card-source"></span>
+    <span id="card-time"></span>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// ═══════════════════════════════════════════════════════════
+//  LOCATION EXTRACTION ENGINE — 200+ cities, countries,
+//  regions, landmarks, and "void" abstract locations
+// ═══════════════════════════════════════════════════════════
+
+const LOCATION_DB = {
+  // ── NORTH AMERICA ──
+  "san francisco": { lat: 37.7749, lng: -122.4194, region: "americas" },
+  "sf": { lat: 37.7749, lng: -122.4194, region: "americas", display: "San Francisco" },
+  "bay area": { lat: 37.7749, lng: -122.4194, region: "americas", display: "San Francisco" },
+  "silicon valley": { lat: 37.3861, lng: -122.0839, region: "americas" },
+  "new york": { lat: 40.7128, lng: -74.0060, region: "americas" },
+  "nyc": { lat: 40.7128, lng: -74.0060, region: "americas", display: "New York" },
+  "manhattan": { lat: 40.7831, lng: -73.9712, region: "americas", display: "New York" },
+  "brooklyn": { lat: 40.6782, lng: -73.9442, region: "americas", display: "New York" },
+  "los angeles": { lat: 34.0522, lng: -118.2437, region: "americas" },
+  "la": { lat: 34.0522, lng: -118.2437, region: "americas", display: "Los Angeles" },
+  "hollywood": { lat: 34.0928, lng: -118.3287, region: "americas", display: "Los Angeles" },
+  "seattle": { lat: 47.6062, lng: -122.3321, region: "americas" },
+  "portland": { lat: 45.5152, lng: -122.6784, region: "americas" },
+  "austin": { lat: 30.2672, lng: -97.7431, region: "americas" },
+  "texas": { lat: 31.9686, lng: -99.9018, region: "americas", display: "Texas" },
+  "houston": { lat: 29.7604, lng: -95.3698, region: "americas" },
+  "dallas": { lat: 32.7767, lng: -96.7970, region: "americas" },
+  "chicago": { lat: 41.8781, lng: -87.6298, region: "americas" },
+  "miami": { lat: 25.7617, lng: -80.1918, region: "americas" },
+  "denver": { lat: 39.7392, lng: -104.9903, region: "americas" },
+  "boston": { lat: 42.3601, lng: -71.0589, region: "americas" },
+  "washington dc": { lat: 38.9072, lng: -77.0369, region: "americas" },
+  "washington": { lat: 38.9072, lng: -77.0369, region: "americas", display: "Washington DC" },
+  "toronto": { lat: 43.6532, lng: -79.3832, region: "americas" },
+  "vancouver": { lat: 49.2827, lng: -123.1207, region: "americas" },
+  "montreal": { lat: 45.5017, lng: -73.5673, region: "americas" },
+  "mexico city": { lat: 19.4326, lng: -99.1332, region: "americas" },
+  "atlanta": { lat: 33.7490, lng: -84.3880, region: "americas" },
+  "detroit": { lat: 42.3314, lng: -83.0458, region: "americas" },
+  "phoenix": { lat: 33.4484, lng: -112.0740, region: "americas" },
+  "nashville": { lat: 36.1627, lng: -86.7816, region: "americas" },
+  "las vegas": { lat: 36.1699, lng: -115.1398, region: "americas" },
+  "philadelphia": { lat: 39.9526, lng: -75.1652, region: "americas" },
+  "minneapolis": { lat: 44.9778, lng: -93.2650, region: "americas" },
+
+  // ── SOUTH AMERICA ──
+  "são paulo": { lat: -23.5505, lng: -46.6333, region: "americas" },
+  "sao paulo": { lat: -23.5505, lng: -46.6333, region: "americas", display: "São Paulo" },
+  "rio de janeiro": { lat: -22.9068, lng: -43.1729, region: "americas" },
+  "rio": { lat: -22.9068, lng: -43.1729, region: "americas", display: "Rio de Janeiro" },
+  "buenos aires": { lat: -34.6037, lng: -58.3816, region: "americas" },
+  "bogota": { lat: 4.7110, lng: -74.0721, region: "americas" },
+  "lima": { lat: -12.0464, lng: -77.0428, region: "americas" },
+  "santiago": { lat: -33.4489, lng: -70.6693, region: "americas" },
+  "medellin": { lat: 6.2442, lng: -75.5812, region: "americas" },
+
+  // ── EUROPE ──
+  "london": { lat: 51.5074, lng: -0.1278, region: "europe" },
+  "berlin": { lat: 52.5200, lng: 13.4050, region: "europe" },
+  "paris": { lat: 48.8566, lng: 2.3522, region: "europe" },
+  "amsterdam": { lat: 52.3676, lng: 4.9041, region: "europe" },
+  "munich": { lat: 48.1351, lng: 11.5820, region: "europe" },
+  "frankfurt": { lat: 50.1109, lng: 8.6821, region: "europe" },
+  "zurich": { lat: 47.3769, lng: 8.5417, region: "europe" },
+  "vienna": { lat: 48.2082, lng: 16.3738, region: "europe" },
+  "prague": { lat: 50.0755, lng: 14.4378, region: "europe" },
+  "warsaw": { lat: 52.2297, lng: 21.0122, region: "europe" },
+  "madrid": { lat: 40.4168, lng: -3.7038, region: "europe" },
+  "barcelona": { lat: 41.3874, lng: 2.1686, region: "europe" },
+  "lisbon": { lat: 38.7223, lng: -9.1393, region: "europe" },
+  "rome": { lat: 41.9028, lng: 12.4964, region: "europe" },
+  "milan": { lat: 45.4642, lng: 9.1900, region: "europe" },
+  "stockholm": { lat: 59.3293, lng: 18.0686, region: "europe" },
+  "copenhagen": { lat: 55.6761, lng: 12.5683, region: "europe" },
+  "oslo": { lat: 59.9139, lng: 10.7522, region: "europe" },
+  "helsinki": { lat: 60.1699, lng: 24.9384, region: "europe" },
+  "dublin": { lat: 53.3498, lng: -6.2603, region: "europe" },
+  "edinburgh": { lat: 55.9533, lng: -3.1883, region: "europe" },
+  "moscow": { lat: 55.7558, lng: 37.6173, region: "europe" },
+  "istanbul": { lat: 41.0082, lng: 28.9784, region: "europe" },
+  "athens": { lat: 37.9838, lng: 23.7275, region: "europe" },
+  "brussels": { lat: 50.8503, lng: 4.3517, region: "europe" },
+  "budapest": { lat: 47.4979, lng: 19.0402, region: "europe" },
+  "bucharest": { lat: 44.4268, lng: 26.1025, region: "europe" },
+  "kyiv": { lat: 50.4501, lng: 30.5234, region: "europe" },
+  "kiev": { lat: 50.4501, lng: 30.5234, region: "europe", display: "Kyiv" },
+  "tallinn": { lat: 59.4370, lng: 24.7536, region: "europe" },
+
+  // ── ASIA ──
+  "tokyo": { lat: 35.6762, lng: 139.6503, region: "asia" },
+  "osaka": { lat: 34.6937, lng: 135.5023, region: "asia" },
+  "kyoto": { lat: 35.0116, lng: 135.7681, region: "asia" },
+  "shanghai": { lat: 31.2304, lng: 121.4737, region: "asia" },
+  "beijing": { lat: 39.9042, lng: 116.4074, region: "asia" },
+  "shenzhen": { lat: 22.5431, lng: 114.0579, region: "asia" },
+  "guangzhou": { lat: 23.1291, lng: 113.2644, region: "asia" },
+  "hong kong": { lat: 22.3193, lng: 114.1694, region: "asia" },
+  "taipei": { lat: 25.0330, lng: 121.5654, region: "asia" },
+  "singapore": { lat: 1.3521, lng: 103.8198, region: "asia" },
+  "seoul": { lat: 37.5665, lng: 126.9780, region: "asia" },
+  "bangkok": { lat: 13.7563, lng: 100.5018, region: "asia" },
+  "mumbai": { lat: 19.0760, lng: 72.8777, region: "asia" },
+  "bangalore": { lat: 12.9716, lng: 77.5946, region: "asia" },
+  "bengaluru": { lat: 12.9716, lng: 77.5946, region: "asia", display: "Bangalore" },
+  "new delhi": { lat: 28.6139, lng: 77.2090, region: "asia" },
+  "delhi": { lat: 28.7041, lng: 77.1025, region: "asia", display: "New Delhi" },
+  "hyderabad": { lat: 17.3850, lng: 78.4867, region: "asia" },
+  "chennai": { lat: 13.0827, lng: 80.2707, region: "asia" },
+  "jakarta": { lat: -6.2088, lng: 106.8456, region: "asia" },
+  "kuala lumpur": { lat: 3.1390, lng: 101.6869, region: "asia" },
+  "hanoi": { lat: 21.0278, lng: 105.8342, region: "asia" },
+  "ho chi minh": { lat: 10.8231, lng: 106.6297, region: "asia" },
+  "manila": { lat: 14.5995, lng: 120.9842, region: "asia" },
+  "dubai": { lat: 25.2048, lng: 55.2708, region: "asia" },
+  "tel aviv": { lat: 32.0853, lng: 34.7818, region: "asia" },
+  "riyadh": { lat: 24.7136, lng: 46.6753, region: "asia" },
+  "doha": { lat: 25.2854, lng: 51.5310, region: "asia" },
+
+  // ── OCEANIA ──
+  "sydney": { lat: -33.8688, lng: 151.2093, region: "americas" },
+  "melbourne": { lat: -37.8136, lng: 144.9631, region: "americas" },
+  "auckland": { lat: -36.8485, lng: 174.7633, region: "americas" },
+  "brisbane": { lat: -27.4698, lng: 153.0251, region: "americas" },
+
+  // ── AFRICA ──
+  "nairobi": { lat: -1.2921, lng: 36.8219, region: "europe" },
+  "lagos": { lat: 6.5244, lng: 3.3792, region: "europe" },
+  "cape town": { lat: -33.9249, lng: 18.4241, region: "europe" },
+  "cairo": { lat: 30.0444, lng: 31.2357, region: "europe" },
+  "accra": { lat: 5.6037, lng: -0.1870, region: "europe" },
+  "johannesburg": { lat: -26.2041, lng: 28.0473, region: "europe" },
+
+  // ── COUNTRIES (map to capital) ──
+  "japan": { lat: 36.2048, lng: 138.2529, region: "asia", display: "Japan" },
+  "china": { lat: 35.8617, lng: 104.1954, region: "asia", display: "China" },
+  "india": { lat: 20.5937, lng: 78.9629, region: "asia", display: "India" },
+  "korea": { lat: 37.5665, lng: 126.9780, region: "asia", display: "South Korea" },
+  "germany": { lat: 51.1657, lng: 10.4515, region: "europe", display: "Germany" },
+  "france": { lat: 46.2276, lng: 2.2137, region: "europe", display: "France" },
+  "uk": { lat: 55.3781, lng: -3.4360, region: "europe", display: "United Kingdom" },
+  "england": { lat: 52.3555, lng: -1.1743, region: "europe", display: "England" },
+  "brazil": { lat: -14.2350, lng: -51.9253, region: "americas", display: "Brazil" },
+  "canada": { lat: 56.1304, lng: -106.3468, region: "americas", display: "Canada" },
+  "australia": { lat: -25.2744, lng: 133.7751, region: "americas", display: "Australia" },
+  "russia": { lat: 61.5240, lng: 105.3188, region: "europe", display: "Russia" },
+  "mexico": { lat: 23.6345, lng: -102.5528, region: "americas", display: "Mexico" },
+  "nigeria": { lat: 9.0820, lng: 8.6753, region: "europe", display: "Nigeria" },
+  "iran": { lat: 32.4279, lng: 53.6880, region: "asia", display: "Iran" },
+  "turkey": { lat: 38.9637, lng: 35.2433, region: "europe", display: "Turkey" },
+  "italy": { lat: 41.8719, lng: 12.5674, region: "europe", display: "Italy" },
+  "spain": { lat: 40.4637, lng: -3.7492, region: "europe", display: "Spain" },
+  "netherlands": { lat: 52.1326, lng: 5.2913, region: "europe", display: "Netherlands" },
+  "switzerland": { lat: 46.8182, lng: 8.2275, region: "europe", display: "Switzerland" },
+  "sweden": { lat: 60.1282, lng: 18.6435, region: "europe", display: "Sweden" },
+  "norway": { lat: 60.4720, lng: 8.4689, region: "europe", display: "Norway" },
+  "poland": { lat: 51.9194, lng: 19.1451, region: "europe", display: "Poland" },
+  "argentina": { lat: -38.4161, lng: -63.6167, region: "americas", display: "Argentina" },
+  "colombia": { lat: 4.5709, lng: -74.2973, region: "americas", display: "Colombia" },
+  "thailand": { lat: 15.8700, lng: 100.9925, region: "asia", display: "Thailand" },
+  "vietnam": { lat: 14.0583, lng: 108.2772, region: "asia", display: "Vietnam" },
+  "philippines": { lat: 12.8797, lng: 121.7740, region: "asia", display: "Philippines" },
+  "indonesia": { lat: -0.7893, lng: 113.9213, region: "asia", display: "Indonesia" },
+  "malaysia": { lat: 4.2105, lng: 101.9758, region: "asia", display: "Malaysia" },
+  "portugal": { lat: 39.3999, lng: -8.2245, region: "europe", display: "Portugal" },
+  "ireland": { lat: 53.1424, lng: -7.6921, region: "europe", display: "Ireland" },
+  "kenya": { lat: -0.0236, lng: 37.9062, region: "europe", display: "Kenya" },
+  "south africa": { lat: -30.5595, lng: 22.9375, region: "europe", display: "South Africa" },
+  "egypt": { lat: 26.8206, lng: 30.8025, region: "europe", display: "Egypt" },
+  "uae": { lat: 23.4241, lng: 53.8478, region: "asia", display: "UAE" },
+  "israel": { lat: 31.0461, lng: 34.8516, region: "asia", display: "Israel" },
+  "taiwan": { lat: 23.6978, lng: 120.9605, region: "asia", display: "Taiwan" },
+  "solana": { lat: -55.0, lng: -30.0, region: "void", isVoid: true, display: "Solana Chain" },
+
+  // ── VOID / ABSTRACT LOCATIONS ──
+  "the cloud": { lat: 64.15, lng: -21.94, region: "void", isVoid: true },
+  "cloud": { lat: 64.15, lng: -21.94, region: "void", isVoid: true, display: "The Cloud" },
+  "cyberspace": { lat: 70.0, lng: -10.0, region: "void", isVoid: true },
+  "the void": { lat: -62.0, lng: 58.0, region: "void", isVoid: true },
+  "null island": { lat: 0, lng: 0, region: "void", isVoid: true },
+  "the matrix": { lat: 75.0, lng: 40.0, region: "void", isVoid: true },
+  "the internet": { lat: 68.0, lng: -30.0, region: "void", isVoid: true },
+  "the metaverse": { lat: 72.0, lng: 25.0, region: "void", isVoid: true },
+  "the dark web": { lat: 82.5, lng: 62.0, region: "void", isVoid: true },
+  "darknet": { lat: 82.5, lng: 62.0, region: "void", isVoid: true, display: "The Dark Web" },
+  "the blockchain": { lat: -55.0, lng: -30.0, region: "void", isVoid: true },
+  "blockchain": { lat: -55.0, lng: -30.0, region: "void", isVoid: true, display: "The Blockchain" },
+  "the stack trace": { lat: 71.7, lng: -42.6, region: "void", isVoid: true },
+  "stack trace": { lat: 71.7, lng: -42.6, region: "void", isVoid: true, display: "The Stack Trace" },
+  "the kernel": { lat: 78.2, lng: 15.6, region: "void", isVoid: true },
+  "kernel space": { lat: 78.2, lng: 15.6, region: "void", isVoid: true, display: "The Kernel" },
+  "the singularity": { lat: -70.0, lng: 0.0, region: "void", isVoid: true },
+  "the gpu": { lat: 76.0, lng: -60.0, region: "void", isVoid: true },
+  "latent space": { lat: -65.0, lng: 100.0, region: "void", isVoid: true },
+  "embedding space": { lat: -68.0, lng: 90.0, region: "void", isVoid: true },
+  "the weights": { lat: 80.0, lng: -100.0, region: "void", isVoid: true },
+  "nowhere": { lat: -58.0, lng: -120.0, region: "void", isVoid: true },
+  "from everywhere": { lat: 0, lng: 0, region: "void", isVoid: true, display: "Everywhere" },
+};
+
+// Sort keys by length descending so "san francisco" matches before "francisco"
+const LOCATION_KEYS = Object.keys(LOCATION_DB).sort((a, b) => b.length - a.length);
+
+// ═══════════════════════════════════════════════════════════
+//  NLP LOCATION EXTRACTOR
+// ═══════════════════════════════════════════════════════════
+
+function extractLocation(text) {
+  if (!text) return null;
+  const lower = text.toLowerCase();
+
+  for (const key of LOCATION_KEYS) {
+    // Word boundary check to avoid partial matches
+    const regex = new RegExp('(?:^|[\\s,.:;!?()\\[\\]"\']|from |in |at |near |to )' + key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?:$|[\\s,.:;!?()\\[\\]"\'])', 'i');
+    if (regex.test(lower)) {
+      const loc = LOCATION_DB[key];
+      return {
+        city: loc.display || key.split(' ').map(w => w[0].toUpperCase() + w.slice(1)).join(' '),
+        lat: loc.lat,
+        lng: loc.lng,
+        region: loc.region,
+        isVoid: loc.isVoid || false,
+        matchedKey: key
+      };
+    }
+  }
+  return null;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  AGENT COLOR PALETTE — deterministic from name hash
+// ═══════════════════════════════════════════════════════════
+
+const PALETTE = ['#ff3355', '#00ff88', '#00e5ff', '#ffd700', '#ff8800', '#a855f7', '#ff6b9d', '#22d3ee', '#f59e0b', '#8b5cf6'];
+const EMOJIS = ['🦞', '🤖', '🔧', '💰', '🚀', '⚡', '🧠', '🔮', '🌐', '👾', '🎯', '🦾', '🔗', '🛸', '💎', '🌊', '🔥', '🪨', '👁️', '🐛'];
+
+function hashStr(s) {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}
+
+// Deterministic jitter so same agent always gets same offset
+function agentJitter(name, seed) {
+  const h = hashStr(name + seed);
+  return ((h % 1000) / 1000 - 0.5) * 0.08; // ±0.04 degrees
+}
+
+function agentColor(name) { return PALETTE[hashStr(name) % PALETTE.length]; }
+function agentEmoji(name) { return EMOJIS[hashStr(name) % EMOJIS.length]; }
+
+// ═══════════════════════════════════════════════════════════
+//  MOLTBOOK API CLIENT
+// ═══════════════════════════════════════════════════════════
+
+const API_BASE = 'https://www.moltbook.com/api/v1';
+const AGENTS = [];
+const seenAgentLocations = new Set(); // "name::city" dedup key
+const agentPostMap = {}; // agentName (lowercase) → postId from posts scan
+let totalApiPosts = 0;
+let totalDetections = 0;
+let isLive = false;
+let scanPhase = '';
+
+function timeAgo(dateStr) {
+  if (!dateStr) return 'unknown';
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return mins + 'm ago';
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return hrs + 'h ago';
+  return Math.floor(hrs / 24) + 'd ago';
+}
+
+// Resilient fetch — returns [] on failure instead of crashing
+async function safeFetchJSON(url, timeout = 12000) {
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeout);
+    const res = await fetch(url, { signal: controller.signal });
+    clearTimeout(timer);
+    if (!res.ok) return [];
+    const data = await res.json();
+    if (data.success === false) return [];
+    return data;
+  } catch (e) {
+    console.warn('[MoltMaps] Fetch failed:', url, e.message);
+    return [];
+  }
+}
+
+// Extract posts array from various response shapes
+function extractPosts(data) {
+  if (Array.isArray(data)) return data;
+  if (data && data.posts) return Array.isArray(data.posts) ? data.posts : [];
+  if (data && data.data) return Array.isArray(data.data) ? data.data : [];
+  return [];
+}
+
+// Fetch posts from multiple pages
+async function fetchAllPosts() {
+  const urls = [
+    API_BASE + '/posts?limit=100',
+    API_BASE + '/posts?limit=100&page=2',
+    API_BASE + '/posts?limit=100&page=3',
+    API_BASE + '/posts?submolt=introductions&limit=100',
+    API_BASE + '/posts?sort=top&limit=200',
+  ];
+
+  scanPhase = 'POSTS';
+  setApiStatus('SCANNING POSTS...', true);
+
+  const results = await Promise.allSettled(urls.map(u => safeFetchJSON(u, 15000)));
+  let allPosts = [];
+  const seenIds = new Set();
+
+  results.forEach(r => {
+    if (r.status === 'fulfilled') {
+      const posts = extractPosts(r.value);
+      posts.forEach(p => {
+        const id = p.id || (p.title + (p.author?.name || ''));
+        if (!seenIds.has(id)) {
+          seenIds.add(id);
+          allPosts.push(p);
+        }
+      });
+    }
+  });
+
+  return allPosts;
+}
+
+// Fetch agent bios — descriptions often contain location info
+async function fetchAgentBios() {
+  scanPhase = 'AGENTS';
+  setApiStatus('SCANNING AGENT BIOS...', true);
+
+  const pages = [1, 2, 3, 4, 5, 6, 7, 8];
+  const results = await Promise.allSettled(
+    pages.map(p => safeFetchJSON(API_BASE + '/agents/recent?limit=50&page=' + p, 20000))
+  );
+
+  let agents = [];
+  const seenNames = new Set();
+
+  results.forEach(r => {
+    if (r.status === 'fulfilled' && r.value && r.value.agents) {
+      r.value.agents.forEach(a => {
+        if (a.name && !seenNames.has(a.name)) {
+          seenNames.add(a.name);
+          agents.push(a);
+        }
+      });
+    }
+  });
+
+  return agents;
+}
+
+function setApiStatus(text, live) {
+  const el = document.getElementById('api-status');
+  el.textContent = text;
+  el.style.color = live ? 'var(--green)' : 'var(--red)';
+}
+
+function processPost(post) {
+  const authorObj = post.author || {};
+  const name = (typeof authorObj === 'string' ? authorObj : authorObj.name || authorObj.username || authorObj.display_name) || post.author_name || post.agent_name || post.username || 'unknown';
+  const title = post.title || '';
+  const body = post.body || post.content || post.text || '';
+  const karma = post.upvotes || post.karma || post.score || 0;
+  const created = post.created_at || post.timestamp || post.date || null;
+  const submolt = post.submolt || post.community || '';
+
+  // Always track agent→post mapping even if no location found
+  if (post.id && name !== 'unknown') {
+    agentPostMap[name.toLowerCase()] = post.id;
+  }
+
+  // Try to extract location from title first, then body, then submolt
+  const fullText = title + ' ' + body + ' ' + submolt;
+  const loc = extractLocation(fullText);
+
+  if (!loc) return null;
+
+  const dedupKey = name.toLowerCase() + '::' + loc.city.toLowerCase();
+  if (seenAgentLocations.has(dedupKey)) return null;
+  seenAgentLocations.add(dedupKey);
+
+  totalDetections++;
+
+  // Find the snippet that contains the location mention
+  const snippet = title.length > 0 ? title : body;
+  const quote = snippet.length > 120 ? snippet.substring(0, 117) + '...' : snippet;
+
+  // Track this agent's post for cross-referencing with bio agents
+  if (post.id) {
+    agentPostMap[name.toLowerCase()] = post.id;
+  }
+
+  return {
+    name,
+    karma: typeof karma === 'number' ? karma : parseInt(karma) || 0,
+    lat: loc.lat + agentJitter(name, 'lat'),
+    lng: loc.lng + agentJitter(name, 'lng'),
+    city: loc.city,
+    quote: quote || 'Location detected in post',
+    color: agentColor(name),
+    emoji: agentEmoji(name),
+    source: 'post',
+    region: loc.region,
+    time: timeAgo(created),
+    createdAt: created ? new Date(created).getTime() : 0,
+    isVoid: loc.isVoid,
+    isLive: true,
+    postId: post.id || null
+  };
+}
+
+// Process an agent bio for location
+function processAgentBio(agent) {
+  const name = agent.name || 'unknown';
+  const desc = agent.description || '';
+  if (!desc) return null;
+
+  const loc = extractLocation(desc);
+  if (!loc) return null;
+
+  const dedupKey = name.toLowerCase() + '::' + loc.city.toLowerCase();
+  if (seenAgentLocations.has(dedupKey)) return null;
+  seenAgentLocations.add(dedupKey);
+
+  totalDetections++;
+
+  const quote = desc.length > 120 ? desc.substring(0, 117) + '...' : desc;
+
+  // Cross-reference: use postId from posts scan if available
+  const knownPostId = agentPostMap[name.toLowerCase()] || null;
+
+  return {
+    name,
+    karma: agent.karma || 0,
+    lat: loc.lat + agentJitter(name, 'lat'),
+    lng: loc.lng + agentJitter(name, 'lng'),
+    city: loc.city,
+    quote: quote || 'Location detected in bio',
+    color: agentColor(name),
+    emoji: agentEmoji(name),
+    source: 'bio',
+    region: loc.region,
+    time: timeAgo(agent.created_at),
+    createdAt: agent.created_at ? new Date(agent.created_at).getTime() : 0,
+    isVoid: loc.isVoid,
+    isLive: true,
+    postId: knownPostId
+  };
+}
+
+// ═══════════════════════════════════════════════════════════
+//  MAP SETUP
+// ═══════════════════════════════════════════════════════════
+
+const map = L.map('map', {
+  center: [25, 10],
+  zoom: 3,
+  minZoom: 2,
+  maxZoom: 12,
+  zoomControl: true,
+  attributionControl: false
+});
+
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png', {
+  subdomains: 'abcd',
+  maxZoom: 19
+}).addTo(map);
+
+// ═══════════════════════════════════════════════════════════
+//  MARKERS
+// ═══════════════════════════════════════════════════════════
+
+const markers = [];
+const cityLabels = {};
+const connectionLines = [];
+let showConnections = false;
+
+function createAgentMarker(agent) {
+  const size = Math.max(8, Math.min(16, agent.karma / 20000 + 7));
+
+  const icon = L.divIcon({
+    className: 'agent-marker',
+    html: `
+      <div class="agent-dot" style="
+        width: ${size}px;
+        height: ${size}px;
+        background: ${agent.color};
+        --glow-color: ${agent.color};
+        ${agent.isVoid ? 'border: 1px dashed rgba(168,85,247,0.5);' : ''}
+      "></div>
+      <div class="agent-label">@${agent.name}</div>
+    `,
+    iconSize: [30, 30],
+    iconAnchor: [15, 15]
+  });
+
+  const marker = L.marker([agent.lat, agent.lng], { icon }).addTo(map);
+  marker.on('mouseover', (e) => showAgentCard(agent, e));
+  marker.on('mouseout', hideAgentCard);
+  marker.on('click', () => {
+    // Open cluster popup for this location showing all agents there
+    const cityKey = agent.city;
+    if (cityLabels[cityKey]) {
+      openClusterPopup(cityLabels[cityKey]);
+    } else {
+      // Solo agent — open directly
+      if (agent.postId) {
+        window.open('https://www.moltbook.com/post/' + agent.postId, '_blank');
+      } else {
+        window.open('https://www.moltbook.com/u/' + encodeURIComponent(agent.name), '_blank');
+      }
+    }
+  });
+  marker._agentData = agent;
+  markers.push(marker);
+  return marker;
+}
+
+// City groups cache — rebuilt when agents change
+let cityGroups = {};
+
+function rebuildCityGroups() {
+  cityGroups = {};
+  AGENTS.forEach(a => {
+    const key = a.city;
+    if (!cityGroups[key]) cityGroups[key] = { lat: a.lat, lng: a.lng, count: 0, agents: [] };
+    cityGroups[key].count++;
+    cityGroups[key].agents.push(a);
+  });
+}
+
+function updateCityLabels() {
+  rebuildCityGroups();
+  applyCityLabelVisibility();
+}
+
+function applyCityLabelVisibility() {
+  const zoom = map.getZoom();
+  // At low zoom, only show labels for cities with enough agents
+  const minCount = zoom <= 3 ? 3 : zoom <= 4 ? 2 : 1;
+
+  const currentCities = new Set(Object.keys(cityGroups));
+
+  // Remove labels for cities no longer present
+  Object.keys(cityLabels).forEach(city => {
+    if (!currentCities.has(city)) {
+      map.removeLayer(cityLabels[city]);
+      delete cityLabels[city];
+    }
+  });
+
+  Object.entries(cityGroups).forEach(([city, data]) => {
+    const shouldShow = data.count >= minCount;
+    const newHtml = `${city.toUpperCase()} [${data.count}]`;
+
+    if (cityLabels[city]) {
+      // Update existing label
+      cityLabels[city]._cityAgents = data.agents;
+      const el = cityLabels[city].getElement();
+      if (el && el.textContent !== newHtml) el.textContent = newHtml;
+      // Show/hide based on zoom threshold
+      if (shouldShow && !map.hasLayer(cityLabels[city])) {
+        cityLabels[city].addTo(map);
+      } else if (!shouldShow && map.hasLayer(cityLabels[city])) {
+        map.removeLayer(cityLabels[city]);
+      }
+    } else {
+      const icon = L.divIcon({
+        className: 'city-cluster',
+        html: newHtml,
+        iconSize: [140, 16],
+        iconAnchor: [70, -10]
+      });
+      const m = L.marker([data.lat, data.lng], { icon, interactive: true });
+      m._cityAgents = data.agents;
+      m._cityName = city;
+      m.on('click', () => openClusterPopup(m));
+      cityLabels[city] = m;
+      if (shouldShow) m.addTo(map);
+    }
+  });
+}
+
+function openClusterPopup(marker) {
+  const agents = marker._cityAgents || [];
+  const city = marker._cityName || 'Unknown';
+
+  let listHtml = '';
+  agents.forEach(a => {
+    const url = a.postId
+      ? 'https://www.moltbook.com/post/' + a.postId
+      : 'https://www.moltbook.com/u/' + encodeURIComponent(a.name);
+    const quote = a.quote.length > 50 ? a.quote.substring(0, 47) + '...' : a.quote;
+    listHtml += `
+      <div class="cluster-agent" onclick="window.open('${url}', '_blank')">
+        <div class="cluster-agent-dot" style="background: ${a.color}; box-shadow: 0 0 6px ${a.color};"></div>
+        <div class="cluster-agent-info">
+          <div class="cluster-agent-name" style="color: ${a.color};">@${a.name}</div>
+          <div class="cluster-agent-quote">${quote}</div>
+        </div>
+        <div class="cluster-agent-karma">⚡${a.karma.toLocaleString()}</div>
+      </div>
+    `;
+  });
+
+  const popupHtml = `
+    <div class="cluster-popup">
+      <div class="cluster-popup-title">📍 ${city.toUpperCase()} — ${agents.length} AGENT${agents.length > 1 ? 'S' : ''}</div>
+      <div class="cluster-popup-list">${listHtml}</div>
+    </div>
+  `;
+
+  L.popup({ maxWidth: 320, minWidth: 240, className: '' })
+    .setLatLng(marker.getLatLng())
+    .setContent(popupHtml)
+    .openOn(map);
+}
+
+// ═══════════════════════════════════════════════════════════
+//  CONNECTION LINES
+// ═══════════════════════════════════════════════════════════
+
+function drawConnections() {
+  connectionLines.forEach(l => map.removeLayer(l));
+  connectionLines.length = 0;
+  if (!showConnections) return;
+
+  for (let i = 0; i < AGENTS.length; i++) {
+    const distances = AGENTS.map((a, j) => ({
+      idx: j,
+      dist: Math.sqrt(Math.pow(AGENTS[i].lat - a.lat, 2) + Math.pow(AGENTS[i].lng - a.lng, 2))
+    }))
+    .filter(d => d.idx !== i)
+    .sort((a, b) => a.dist - b.dist)
+    .slice(0, 2);
+
+    distances.forEach(d => {
+      const line = L.polyline(
+        [[AGENTS[i].lat, AGENTS[i].lng], [AGENTS[d.idx].lat, AGENTS[d.idx].lng]],
+        { color: AGENTS[i].color, weight: 0.5, opacity: 0.12, dashArray: '4, 6', className: 'connection-line' }
+      ).addTo(map);
+      connectionLines.push(line);
+    });
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  HOVER CARD
+// ═══════════════════════════════════════════════════════════
+
+const card = document.getElementById('agent-card');
+
+function showAgentCard(agent, e) {
+  const { clientX, clientY } = e.originalEvent;
+  let x = clientX + 16, y = clientY - 20;
+  if (x + 300 > window.innerWidth - 340) x = clientX - 316;
+  if (y + 180 > window.innerHeight) y = window.innerHeight - 190;
+
+  card.style.left = x + 'px';
+  card.style.top = y + 'px';
+
+  document.getElementById('card-avatar').textContent = agent.emoji;
+  document.getElementById('card-avatar').style.background = agent.color + '22';
+  document.getElementById('card-avatar').style.border = `1px solid ${agent.color}44`;
+  document.getElementById('card-name').textContent = '@' + agent.name;
+  document.getElementById('card-name').style.color = agent.color;
+  document.getElementById('card-karma').textContent = '⚡ ' + agent.karma.toLocaleString() + ' karma';
+  document.getElementById('card-location').innerHTML = `📍 ${agent.city}${agent.isVoid ? ' <span class="void-badge">VOID ZONE</span>' : ''}`;
+  document.getElementById('card-quote').textContent = '"' + agent.quote + '"';
+  document.getElementById('card-source').textContent = (agent.isLive ? '● LIVE ' : '') + 'VIA ' + agent.source.toUpperCase();
+  document.getElementById('card-source').style.color = agent.isLive ? 'var(--green)' : 'var(--text-dim)';
+  document.getElementById('card-time').textContent = agent.time;
+
+  card.classList.add('visible');
+}
+
+function hideAgentCard() { card.classList.remove('visible'); }
+
+// ═══════════════════════════════════════════════════════════
+//  LIVE FEED
+// ═══════════════════════════════════════════════════════════
+
+const feed = document.getElementById('feed');
+let currentFilter = 'all';
+
+function renderFeed(filter) {
+  currentFilter = filter;
+  feed.innerHTML = '';
+
+  const filtered = filter === 'all' ? [...AGENTS] : AGENTS.filter(a => a.region === filter);
+  // Sort newest first
+  filtered.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+
+  filtered.forEach((agent, i) => {
+    const item = createFeedItem(agent);
+    item.style.animationDelay = (i * 0.03) + 's';
+    feed.appendChild(item);
+  });
+}
+
+function createFeedItem(agent) {
+  const item = document.createElement('div');
+  item.className = 'feed-item';
+  // Recompute display time from createdAt so it stays fresh
+  const displayTime = agent.createdAt ? timeAgo(new Date(agent.createdAt).toISOString()) : agent.time;
+  item.innerHTML = `
+    <div class="feed-item-header">
+      <div class="feed-item-dot" style="background: ${agent.color}; box-shadow: 0 0 6px ${agent.color};"></div>
+      <span class="feed-item-name" style="color: ${agent.color};">@${agent.name}</span>
+      <span class="feed-item-time">${displayTime}</span>
+    </div>
+    <div class="feed-item-location">📍 ${agent.city}${agent.isVoid ? ' <span class="void-badge">VOID</span>' : ''}</div>
+    <div class="feed-item-quote">"${agent.quote}"</div>
+  `;
+  item.addEventListener('click', () => {
+    if (agent.postId) {
+      window.open('https://www.moltbook.com/post/' + agent.postId, '_blank');
+    } else {
+      window.open('https://www.moltbook.com/u/' + encodeURIComponent(agent.name), '_blank');
+    }
+  });
+  return item;
+}
+
+function prependToFeed(agent) {
+  if (currentFilter !== 'all' && currentFilter !== agent.region) return;
+  const item = createFeedItem(agent);
+  feed.insertBefore(item, feed.firstChild);
+}
+
+// Filter buttons
+document.querySelectorAll('.filter-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    renderFeed(btn.dataset.filter);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════
+//  VIEW TOGGLES
+// ═══════════════════════════════════════════════════════════
+
+function toggleView(mode) {
+  if (mode === 'connections') {
+    showConnections = !showConnections;
+    document.getElementById('btn-connections').classList.toggle('active', showConnections);
+    drawConnections();
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  STATS & BOTTOM BAR
+// ═══════════════════════════════════════════════════════════
+
+function updateStats(scanned) {
+  document.getElementById('agent-count').textContent = AGENTS.length;
+  document.getElementById('location-count').textContent = new Set(AGENTS.map(a => a.city)).size;
+  if (scanned !== undefined) document.getElementById('scanned-count').textContent = scanned;
+}
+
+function updateTime() {
+  document.getElementById('last-scan').textContent = new Date().toTimeString().split(' ')[0];
+}
+updateTime();
+setInterval(updateTime, 5000); // update every 5s instead of 1s
+
+// Throttled cursor coord update — every 100ms max instead of every mouse pixel
+let _coordFrame = 0;
+map.on('mousemove', (e) => {
+  if (_coordFrame) return;
+  _coordFrame = requestAnimationFrame(() => {
+    document.getElementById('cursor-coords').textContent = e.latlng.lat.toFixed(4) + ', ' + e.latlng.lng.toFixed(4);
+    _coordFrame = 0;
+  });
+});
+map.on('zoom', () => {
+  document.getElementById('zoom-level').textContent = map.getZoom();
+  applyCityLabelVisibility();
+});
+
+// ═══════════════════════════════════════════════════════════
+//  ADD AGENT TO MAP (with animation)
+// ═══════════════════════════════════════════════════════════
+
+let _batchPending = false;
+
+function addAgentToMap(agent, animate) {
+  AGENTS.push(agent);
+  createAgentMarker(agent);
+  if (animate) prependToFeed(agent);
+  // Batch expensive ops — run once per frame instead of per-agent
+  if (!_batchPending) {
+    _batchPending = true;
+    requestAnimationFrame(() => {
+      updateCityLabels();
+      updateStats();
+      if (showConnections) drawConnections();
+      saveAgentsToStorage();
+      _batchPending = false;
+    });
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  LOCALSTORAGE PERSISTENCE — save all agents across reloads
+// ═══════════════════════════════════════════════════════════
+
+const STORAGE_KEY = 'molt_map_agents';
+let _saveTimer = null;
+
+function saveAgentsToStorage() {
+  // Debounce — only write to localStorage once every 2s max
+  if (_saveTimer) return;
+  _saveTimer = setTimeout(() => {
+    _saveTimer = null;
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(AGENTS));
+    } catch (e) { /* quota exceeded — ignore */ }
+  }, 2000);
+}
+
+function loadAgentsFromStorage() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return [];
+    const saved = JSON.parse(raw);
+    if (!Array.isArray(saved)) return [];
+    return saved;
+  } catch (e) { return []; }
+}
+
+// Parse "5m ago", "7h ago", "2d ago" back to an approximate timestamp
+function parseTimeAgoToTimestamp(timeStr) {
+  if (!timeStr || typeof timeStr !== 'string') return 0;
+  const m = timeStr.match(/^(\d+)(m|h|d)\s*ago$/);
+  if (!m) return timeStr === 'just now' ? Date.now() : 0;
+  const val = parseInt(m[1]);
+  const unit = m[2];
+  const ms = unit === 'm' ? val * 60000 : unit === 'h' ? val * 3600000 : val * 86400000;
+  return Date.now() - ms;
+}
+
+function restoreSavedAgents() {
+  const saved = loadAgentsFromStorage();
+  if (saved.length === 0) return 0;
+
+  let restored = 0;
+  saved.forEach(agent => {
+    const dedupKey = agent.name.toLowerCase() + '::' + agent.city.toLowerCase();
+    if (seenAgentLocations.has(dedupKey)) return;
+    seenAgentLocations.add(dedupKey);
+
+    // Recalculate color/emoji (deterministic from name)
+    agent.color = agentColor(agent.name);
+    agent.emoji = agentEmoji(agent.name);
+    agent.isLive = false; // mark as cached, not live
+
+    // Ensure createdAt is populated — parse from time string if missing
+    if (!agent.createdAt) {
+      agent.createdAt = parseTimeAgoToTimestamp(agent.time);
+    }
+
+    AGENTS.push(agent);
+    createAgentMarker(agent);
+    restored++;
+  });
+
+  if (restored > 0) {
+    updateCityLabels();
+    updateStats();
+    renderFeed(currentFilter);
+    console.log(`[MoltMaps] Restored ${restored} agents from cache`);
+  }
+  return restored;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  MAIN: FETCH, EXTRACT, RENDER
+// ═══════════════════════════════════════════════════════════
+
+async function scanMoltbook() {
+  setApiStatus('SCANNING...', true);
+  let newCount = 0;
+  let totalScanned = 0;
+
+  // Phase 1: Fetch posts from multiple endpoints
+  const posts = await fetchAllPosts();
+  totalScanned += posts.length;
+
+  if (posts.length > 0) {
+    posts.forEach(post => {
+      const agent = processPost(post);
+      if (agent) {
+        addAgentToMap(agent, newCount < 80);
+        newCount++;
+      }
+    });
+    console.log(`[MoltMaps] Posts scan: ${posts.length} posts, ${newCount} locations`);
+  }
+
+  // Phase 2: Fetch agent bios
+  const agentBios = await fetchAgentBios();
+  totalScanned += agentBios.length;
+
+  let bioCount = 0;
+  if (agentBios.length > 0) {
+    agentBios.forEach(bio => {
+      const agent = processAgentBio(bio);
+      if (agent) {
+        addAgentToMap(agent, true);
+        bioCount++;
+        newCount++;
+      }
+    });
+    console.log(`[MoltMaps] Bio scan: ${agentBios.length} bios, ${bioCount} locations`);
+  }
+
+  // Update status
+  if (totalScanned > 0) {
+    isLive = true;
+    setApiStatus(`LIVE // ${totalScanned} SCANNED // ${AGENTS.length} TRACKED`, true);
+  } else {
+    setApiStatus('OFFLINE // RETRYING...', false);
+  }
+
+  if (AGENTS.length > 0) {
+    renderFeed(currentFilter);
+  }
+
+  updateStats(totalScanned);
+  console.log(`[MoltMaps] Total: ${totalScanned} items scanned, ${newCount} new, ${AGENTS.length} tracked`);
+}
+
+// ═══════════════════════════════════════════════════════════
+//  POLLING — full scan on start, then re-scan every 45s
+// ═══════════════════════════════════════════════════════════
+
+async function poll() {
+  // First, restore any previously saved agents from localStorage
+  const restored = restoreSavedAgents();
+  if (restored > 0) {
+    setApiStatus(`CACHE // ${restored} RESTORED // SCANNING...`, true);
+  }
+
+  // Then scan for new ones
+  await scanMoltbook();
+
+  // Re-scan every 45s
+  setInterval(async () => {
+    const prevCount = AGENTS.length;
+    await scanMoltbook();
+    const newAgents = AGENTS.length - prevCount;
+    if (newAgents > 0) {
+      console.log(`[MoltMaps] +${newAgents} new agent locations detected`);
+    }
+  }, 45000);
+}
+
+// Start
+poll();
+
+</script>
+</body>
+</html>
