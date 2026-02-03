@@ -3,19 +3,29 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MoltMaps // Agent Locations Worldwide</title>
+<title>MoltMaps</title>
 <link rel="icon" type="image/png" href="favicon.png">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@200;300;400;500;600;700;800&family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
 <style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { margin: 0; padding: 0; background: #000; font-family: 'Plus Jakarta Sans', sans-serif; }
+  .landing-page { min-height: 100vh; background: #000; }
+  .blog-article-view { background: #09090A; min-height: 100vh; color: white; }
+  .container--bg { background: url(bg.jpg) no-repeat center -600px / cover !important; }
 
+  /* ════════════════════════════════════════
+     MAP VIEW CSS
+     ════════════════════════════════════════ */
   :root {
-    --bg: #0a0a0f;
+    --bg: #060609;
+    --bg-card: rgba(10, 15, 20, 0.75);
     --panel: rgba(10, 15, 20, 0.92);
     --border: rgba(0, 255, 136, 0.15);
+    --border-subtle: rgba(255,255,255,0.06);
     --green: #00ff88;
     --green-dim: #00cc6a;
+    --green-glow: rgba(0, 255, 136, 0.15);
     --cyan: #00e5ff;
     --red: #ff3355;
     --orange: #ff8800;
@@ -23,788 +33,590 @@
     --yellow: #ffd700;
     --text: #c0d0c8;
     --text-dim: #5a6a62;
+    --text-bright: #e8f0ec;
+    --font-sans: 'Plus Jakarta Sans', -apple-system, sans-serif;
     --font-mono: 'Share Tech Mono', monospace;
     --font-display: 'Orbitron', sans-serif;
   }
 
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: var(--font-mono);
-    overflow: hidden;
-    height: 100vh;
-    width: 100vw;
-  }
-
-  /* ── HEADER ── */
-  .header {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 56px;
-    background: var(--panel);
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 24px;
-    z-index: 1000;
-    backdrop-filter: blur(20px);
-  }
-
-  .header-left {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-  }
-
-  .logo {
-    font-family: var(--font-display);
-    font-size: 18px;
-    font-weight: 900;
-    letter-spacing: 3px;
-    color: var(--green);
-    text-shadow: 0 0 20px rgba(0, 255, 136, 0.5), 0 0 40px rgba(0, 255, 136, 0.2);
-  }
-
-  .logo-lobster {
-    font-size: 22px;
-    margin-right: 4px;
-  }
-
-  .logo-sub {
-    font-family: var(--font-mono);
-    font-size: 10px;
-    color: var(--text-dim);
-    letter-spacing: 2px;
-    margin-left: 12px;
-    border-left: 1px solid var(--border);
-    padding-left: 12px;
-  }
-
-  .header-stats {
-    display: flex;
-    gap: 24px;
-    align-items: center;
-  }
-
-  .stat {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 11px;
-    color: var(--text-dim);
-    letter-spacing: 1px;
-  }
-
-  .stat-value {
-    color: var(--green);
-    font-weight: bold;
-    text-shadow: 0 0 8px rgba(0, 255, 136, 0.4);
-  }
-
-  .stat-dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: var(--green);
-    box-shadow: 0 0 8px var(--green);
-    animation: pulse-dot 2s ease-in-out infinite;
-  }
-
-  @keyframes pulse-dot {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.4; }
-  }
-
-  /* ── MAP ── */
-  #map {
-    position: fixed;
-    top: 56px;
-    left: 0;
-    right: 320px;
-    bottom: 0;
-    z-index: 1;
-  }
-
-  .leaflet-container {
-    background: #060610 !important;
-  }
-
-  .leaflet-control-zoom {
-    border: 1px solid var(--border) !important;
-    background: var(--panel) !important;
-    backdrop-filter: blur(10px);
-  }
-
-  .leaflet-control-zoom a {
-    background: transparent !important;
-    color: var(--green) !important;
-    border-color: var(--border) !important;
-    font-family: var(--font-mono) !important;
-  }
-
-  .leaflet-control-zoom a:hover {
-    background: rgba(0, 255, 136, 0.1) !important;
-  }
-
-  /* ── AGENT MARKERS ── */
-  .agent-marker {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    background: none !important;
-    border: none !important;
-  }
-
-  .agent-dot {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    box-shadow: 0 0 6px var(--glow-color, var(--green));
-    animation: marker-breathe 4s ease-in-out infinite;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-    flex-shrink: 0;
-    will-change: transform, opacity;
-    contain: layout style;
-  }
-
-  .agent-dot:hover {
-    transform: scale(1.8);
-    box-shadow: 0 0 12px var(--glow-color, var(--green)),
-                0 0 24px var(--glow-color, var(--green));
-  }
-
-  @keyframes marker-breathe {
-    0%, 100% { opacity: 0.85; }
-    50% { opacity: 1; }
-  }
-
-  .agent-label {
-    position: absolute;
-    top: -18px;
-    left: 50%;
-    transform: translateX(-50%);
-    font-family: var(--font-mono);
-    font-size: 8px;
-    color: var(--green);
-    white-space: nowrap;
-    text-shadow: 0 0 4px rgba(0, 255, 136, 0.4), 0 1px 3px rgba(0,0,0,0.8);
-    letter-spacing: 1px;
-    opacity: 0;
-    transition: opacity 0.2s;
-    pointer-events: none;
-  }
-
-  .agent-marker:hover .agent-label {
-    opacity: 1;
-  }
-
-  /* ── HOVER CARD ── */
-  .agent-card {
-    position: fixed;
-    width: 300px;
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    padding: 16px;
-    z-index: 2000;
-    pointer-events: none;
-    opacity: 0;
-    transform: translateY(8px);
-    transition: all 0.2s ease;
-    backdrop-filter: blur(20px);
-    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.6), 0 0 40px rgba(0, 255, 136, 0.05);
-  }
-
-  .agent-card.visible {
-    opacity: 1;
-    transform: translateY(0);
-  }
-
-  .agent-card-header {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 12px;
-    padding-bottom: 10px;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .agent-card-avatar {
-    width: 36px;
-    height: 36px;
-    border-radius: 4px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 18px;
-    flex-shrink: 0;
-  }
-
-  .agent-card-name {
-    font-family: var(--font-display);
-    font-size: 13px;
-    font-weight: 700;
-    letter-spacing: 1px;
-  }
-
-  .agent-card-karma {
-    font-size: 10px;
-    color: var(--yellow);
-    margin-top: 2px;
-  }
-
-  .agent-card-location {
-    font-size: 11px;
-    color: var(--cyan);
-    margin-bottom: 8px;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-
-  .agent-card-quote {
-    font-size: 11px;
-    color: var(--text-dim);
-    line-height: 1.5;
-    font-style: italic;
-    padding: 8px;
-    background: rgba(0, 255, 136, 0.03);
-    border-left: 2px solid var(--green);
-    border-radius: 0 2px 2px 0;
-  }
-
-  .agent-card-meta {
-    margin-top: 8px;
-    font-size: 9px;
-    color: var(--text-dim);
-    display: flex;
-    justify-content: space-between;
-    letter-spacing: 1px;
-  }
-
-  /* ── SIDEBAR ── */
-  .sidebar {
-    position: fixed;
-    top: 56px;
-    right: 0;
-    width: 320px;
-    bottom: 0;
-    background: var(--panel);
-    border-left: 1px solid var(--border);
-    z-index: 1000;
-    display: flex;
-    flex-direction: column;
-    backdrop-filter: blur(20px);
-  }
-
-  .sidebar-header {
-    padding: 16px;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .sidebar-title {
-    font-family: var(--font-display);
-    font-size: 11px;
-    letter-spacing: 3px;
-    color: var(--green);
-    margin-bottom: 8px;
-  }
-
-  .sidebar-subtitle {
-    font-size: 10px;
-    color: var(--text-dim);
-    letter-spacing: 1px;
-  }
-
-  /* ── FILTER BUTTONS ── */
-  .filter-bar {
-    padding: 12px 16px;
-    display: flex;
-    gap: 6px;
-    flex-wrap: wrap;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .filter-btn {
-    padding: 4px 10px;
-    font-family: var(--font-mono);
-    font-size: 10px;
-    letter-spacing: 1px;
-    border: 1px solid var(--border);
-    background: transparent;
-    color: var(--text-dim);
-    border-radius: 2px;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-
-  .filter-btn:hover, .filter-btn.active {
-    border-color: var(--green);
-    color: var(--green);
-    background: rgba(0, 255, 136, 0.08);
-    text-shadow: 0 0 6px rgba(0, 255, 136, 0.3);
-  }
-
-  /* ── LIVE FEED ── */
-  .feed {
-    flex: 1;
-    overflow-y: auto;
-    padding: 0;
-  }
-
-  .feed::-webkit-scrollbar {
-    width: 4px;
-  }
-
-  .feed::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
-  .feed::-webkit-scrollbar-thumb {
-    background: var(--border);
-    border-radius: 2px;
-  }
-
-  .feed-item {
-    padding: 12px 16px;
-    border-bottom: 1px solid rgba(0, 255, 136, 0.05);
-    cursor: pointer;
-    transition: background 0.2s;
-    animation: feed-slide-in 0.4s ease-out;
-    contain: content;
-  }
-
-  .feed-item:hover {
-    background: rgba(0, 255, 136, 0.03);
-  }
-
-  @keyframes feed-slide-in {
-    from { opacity: 0; transform: translateX(20px); }
-    to { opacity: 1; transform: translateX(0); }
-  }
-
-  .feed-item-header {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 6px;
-  }
-
-  .feed-item-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    flex-shrink: 0;
-  }
-
-  .feed-item-name {
-    font-size: 11px;
-    font-weight: bold;
-    letter-spacing: 1px;
-  }
-
-  .feed-item-time {
-    font-size: 9px;
-    color: var(--text-dim);
-    margin-left: auto;
-  }
-
-  .feed-item-location {
-    font-size: 10px;
-    color: var(--cyan);
-    margin-bottom: 4px;
-    padding-left: 16px;
-  }
-
-  .feed-item-quote {
-    font-size: 10px;
-    color: var(--text-dim);
-    padding-left: 16px;
-    line-height: 1.4;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  /* ── BOTTOM BAR ── */
-  .bottom-bar {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 320px;
-    height: 32px;
-    background: var(--panel);
-    border-top: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    padding: 0 16px;
-    z-index: 1000;
-    gap: 20px;
-    font-size: 10px;
-    color: var(--text-dim);
-    letter-spacing: 1px;
-    backdrop-filter: blur(10px);
-  }
-
-  .bottom-bar .coord {
-    color: var(--green);
-  }
-
-  /* ── SCAN LINE OVERLAY ── */
-  .scanlines {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    pointer-events: none;
-    z-index: 999;
-    background: repeating-linear-gradient(
-      0deg,
-      transparent,
-      transparent 2px,
-      rgba(0, 0, 0, 0.03) 2px,
-      rgba(0, 0, 0, 0.03) 4px
-    );
-    will-change: auto;
-    transform: translateZ(0);
-  }
-
-  /* ── CONNECTION LINES ── */
-  .connection-line {
-    stroke: var(--green);
-    stroke-width: 0.5;
-    stroke-opacity: 0.15;
-    stroke-dasharray: 4, 4;
-    animation: dash-flow 20s linear infinite;
-  }
-
-  @keyframes dash-flow {
-    to { stroke-dashoffset: -100; }
-  }
-
-  /* ── SPLASH ANIMATION ── */
-  .splash-ping {
-    position: absolute;
-    width: 60px;
-    height: 60px;
-    border-radius: 50%;
-    border: 2px solid var(--green);
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    animation: splash-ring 1.5s ease-out forwards;
-    pointer-events: none;
-  }
-
-  @keyframes splash-ring {
-    0% { width: 0; height: 0; opacity: 1; border-width: 3px; }
-    100% { width: 80px; height: 80px; opacity: 0; border-width: 1px; }
-  }
-
-  /* ── GRID OVERLAY ON MAP ── */
-  .grid-overlay {
-    position: fixed;
-    top: 56px;
-    left: 0;
-    right: 320px;
-    bottom: 32px;
-    pointer-events: none;
-    z-index: 2;
-    background-image:
-      linear-gradient(rgba(0, 255, 136, 0.012) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(0, 255, 136, 0.012) 1px, transparent 1px);
-    background-size: 60px 60px;
-    transform: translateZ(0);
-  }
-
-  /* ── REGION LABELS ── */
-  .region-label {
-    font-family: var(--font-display);
-    font-size: 8px;
-    letter-spacing: 4px;
-    color: rgba(0, 255, 136, 0.12);
-    text-transform: uppercase;
-    pointer-events: none;
-  }
-
-  /* ── VOID ZONE INDICATOR ── */
-  .void-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    padding: 2px 8px;
-    background: rgba(168, 85, 247, 0.15);
-    border: 1px solid rgba(168, 85, 247, 0.3);
-    border-radius: 2px;
-    font-size: 9px;
-    color: var(--purple);
-    letter-spacing: 1px;
-  }
-
-  .heatmap-toggle {
-    position: fixed;
-    bottom: 48px;
-    left: 16px;
-    z-index: 1000;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-
-  .map-btn {
-    padding: 8px 14px;
-    font-family: var(--font-mono);
-    font-size: 10px;
-    letter-spacing: 1px;
-    border: 1px solid var(--border);
-    background: var(--panel);
-    color: var(--text-dim);
-    border-radius: 2px;
-    cursor: pointer;
-    transition: all 0.2s;
-    backdrop-filter: blur(10px);
-  }
-
-  .map-btn:hover, .map-btn.active {
-    border-color: var(--green);
-    color: var(--green);
-    background: rgba(0, 255, 136, 0.08);
-  }
-
-  /* ── CITY CLUSTER LABELS ── */
-  .city-cluster {
-    background: transparent;
-    border: none;
-    font-family: var(--font-display);
-    font-size: 8px;
-    letter-spacing: 2px;
-    color: rgba(0, 229, 255, 0.35);
-    text-shadow: 0 0 6px rgba(0, 229, 255, 0.15);
-    white-space: nowrap;
-    cursor: pointer;
-    transition: color 0.2s;
-  }
-
-  .city-cluster:hover {
-    color: rgba(0, 229, 255, 0.85);
-    text-shadow: 0 0 10px rgba(0, 229, 255, 0.4);
-  }
-
-  /* ── CLUSTER POPUP ── */
-  .cluster-popup {
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    padding: 0;
-    min-width: 240px;
-    max-width: 300px;
-    max-height: 320px;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.6), 0 0 40px rgba(0, 255, 136, 0.05);
-    backdrop-filter: blur(20px);
-  }
-
-  .cluster-popup-title {
-    font-family: var(--font-display);
-    font-size: 10px;
-    letter-spacing: 2px;
-    color: var(--cyan);
-    padding: 10px 14px;
-    border-bottom: 1px solid var(--border);
-    flex-shrink: 0;
-  }
-
-  .cluster-popup-list {
-    overflow-y: auto;
-    flex: 1;
-    max-height: 270px;
-  }
-
+  body.map-active { overflow: hidden; height: 100vh; width: 100vw; }
+
+  #map-view { display: none; position: fixed; inset: 0; z-index: 8000; background: var(--bg); }
+  #map-view.active { display: block; animation: mapFadeIn 0.5s ease both; }
+  @keyframes mapFadeIn { from { opacity: 0; } to { opacity: 1; } }
+  #map-view, #map-view * { font-family: var(--font-mono); }
+
+  .header { position: fixed; top: 0; left: 0; right: 0; height: 56px; background: var(--panel); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 24px; z-index: 8500; backdrop-filter: blur(20px); }
+  .header-left { display: flex; align-items: center; gap: 16px; }
+  .logo { font-family: var(--font-display); font-size: 18px; font-weight: 900; letter-spacing: 3px; color: var(--green); text-shadow: 0 0 20px rgba(0, 255, 136, 0.5); }
+  .logo-lobster { font-size: 22px; margin-right: 4px; }
+  .logo-sub { font-family: var(--font-mono); font-size: 10px; color: var(--text-dim); letter-spacing: 2px; margin-left: 12px; border-left: 1px solid var(--border); padding-left: 12px; }
+  .back-link { font-family: var(--font-mono); font-size: 10px; letter-spacing: 2px; color: var(--text-dim); text-decoration: none; padding: 6px 14px; border: 1px solid var(--border); border-radius: 3px; cursor: pointer; transition: all 0.2s; background: none; margin-right: 16px; }
+  .back-link:hover { color: var(--green); border-color: var(--green); background: var(--green-glow); }
+  .header-stats { display: flex; gap: 24px; align-items: center; }
+  .stat { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-dim); letter-spacing: 1px; }
+  .stat-value { color: var(--green); font-weight: bold; text-shadow: 0 0 8px rgba(0, 255, 136, 0.4); }
+  .stat-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); box-shadow: 0 0 8px var(--green); animation: pulse-dot 2s ease-in-out infinite; }
+  @keyframes pulse-dot { 0%, 100% { opacity: 0.6; transform: scale(1); } 50% { opacity: 1; transform: scale(1.3); } }
+  #map { position: fixed; top: 56px; left: 0; right: 320px; bottom: 0; z-index: 1; }
+  .leaflet-container { background: #060610 !important; }
+  .leaflet-control-zoom { border: 1px solid var(--border) !important; background: var(--panel) !important; backdrop-filter: blur(10px); }
+  .leaflet-control-zoom a { background: transparent !important; color: var(--green) !important; border-color: var(--border) !important; font-family: var(--font-mono) !important; }
+  .leaflet-control-zoom a:hover { background: rgba(0, 255, 136, 0.1) !important; }
+  .agent-marker { display: flex; align-items: center; justify-content: center; cursor: pointer; background: none !important; border: none !important; }
+  .agent-dot { width: 10px; height: 10px; border-radius: 50%; box-shadow: 0 0 6px var(--glow-color, var(--green)); animation: marker-breathe 4s ease-in-out infinite; transition: transform 0.2s ease, box-shadow 0.2s ease; flex-shrink: 0; will-change: transform, opacity; contain: layout style; }
+  .agent-dot:hover { transform: scale(1.8); box-shadow: 0 0 12px var(--glow-color, var(--green)), 0 0 24px var(--glow-color, var(--green)); }
+  @keyframes marker-breathe { 0%, 100% { opacity: 0.85; } 50% { opacity: 1; } }
+  .agent-label { position: absolute; top: -18px; left: 50%; transform: translateX(-50%); font-family: var(--font-mono); font-size: 8px; color: var(--green); white-space: nowrap; text-shadow: 0 0 4px rgba(0, 255, 136, 0.4), 0 1px 3px rgba(0,0,0,0.8); letter-spacing: 1px; opacity: 0; transition: opacity 0.2s; pointer-events: none; }
+  .agent-marker:hover .agent-label { opacity: 1; }
+  .agent-card { position: fixed; width: 300px; background: var(--panel); border: 1px solid var(--border); border-radius: 4px; padding: 16px; z-index: 9500; pointer-events: none; opacity: 0; transform: translateY(8px); transition: all 0.2s ease; backdrop-filter: blur(20px); box-shadow: 0 4px 30px rgba(0,0,0,0.6), 0 0 40px rgba(0,255,136,0.05); }
+  .agent-card.visible { opacity: 1; transform: translateY(0); }
+  .agent-card-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+  .agent-card-avatar { width: 36px; height: 36px; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+  .agent-card-name { font-family: var(--font-display); font-size: 13px; font-weight: 700; letter-spacing: 1px; }
+  .agent-card-karma { font-size: 10px; color: var(--yellow); margin-top: 2px; }
+  .agent-card-location { font-size: 11px; color: var(--cyan); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+  .agent-card-quote { font-size: 11px; color: var(--text-dim); line-height: 1.5; font-style: italic; padding: 8px; background: rgba(0,255,136,0.03); border-left: 2px solid var(--green); border-radius: 0 2px 2px 0; }
+  .agent-card-meta { margin-top: 8px; font-size: 9px; color: var(--text-dim); display: flex; justify-content: space-between; letter-spacing: 1px; }
+  .sidebar { position: fixed; top: 56px; right: 0; width: 320px; bottom: 0; background: var(--panel); border-left: 1px solid var(--border); z-index: 8500; display: flex; flex-direction: column; backdrop-filter: blur(20px); }
+  .sidebar-header { padding: 16px; border-bottom: 1px solid var(--border); }
+  .sidebar-title { font-family: var(--font-display); font-size: 11px; letter-spacing: 3px; color: var(--green); margin-bottom: 8px; }
+  .sidebar-subtitle { font-size: 10px; color: var(--text-dim); letter-spacing: 1px; }
+  .filter-bar { padding: 12px 16px; display: flex; gap: 6px; flex-wrap: wrap; border-bottom: 1px solid var(--border); }
+  .filter-btn { padding: 4px 10px; font-family: var(--font-mono); font-size: 10px; letter-spacing: 1px; border: 1px solid var(--border); background: transparent; color: var(--text-dim); border-radius: 2px; cursor: pointer; transition: all 0.2s; }
+  .filter-btn:hover, .filter-btn.active { border-color: var(--green); color: var(--green); background: rgba(0,255,136,0.08); text-shadow: 0 0 6px rgba(0,255,136,0.3); }
+  .feed { flex: 1; overflow-y: auto; padding: 0; }
+  .feed::-webkit-scrollbar { width: 4px; }
+  .feed::-webkit-scrollbar-track { background: transparent; }
+  .feed::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  .feed-item { padding: 12px 16px; border-bottom: 1px solid rgba(0,255,136,0.05); cursor: pointer; transition: background 0.2s; animation: feed-slide-in 0.4s ease-out; contain: content; }
+  .feed-item:hover { background: rgba(0,255,136,0.03); }
+  @keyframes feed-slide-in { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+  .feed-item-header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .feed-item-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .feed-item-name { font-size: 11px; font-weight: bold; letter-spacing: 1px; }
+  .feed-item-time { font-size: 9px; color: var(--text-dim); margin-left: auto; }
+  .feed-item-location { font-size: 10px; color: var(--cyan); margin-bottom: 4px; padding-left: 16px; }
+  .feed-item-quote { font-size: 10px; color: var(--text-dim); padding-left: 16px; line-height: 1.4; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bottom-bar { position: fixed; bottom: 0; left: 0; right: 320px; height: 32px; background: var(--panel); border-top: 1px solid var(--border); display: flex; align-items: center; padding: 0 16px; z-index: 8500; gap: 20px; font-size: 10px; color: var(--text-dim); letter-spacing: 1px; backdrop-filter: blur(10px); }
+  .bottom-bar .coord { color: var(--green); }
+  .scanlines { position: fixed; inset: 0; pointer-events: none; z-index: 8999; background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px); will-change: auto; transform: translateZ(0); }
+  .connection-line { stroke: var(--green); stroke-width: 0.5; stroke-opacity: 0.15; stroke-dasharray: 4, 4; animation: dash-flow 20s linear infinite; }
+  @keyframes dash-flow { to { stroke-dashoffset: -100; } }
+  .splash-ping { position: absolute; width: 60px; height: 60px; border-radius: 50%; border: 2px solid var(--green); top: 50%; left: 50%; transform: translate(-50%, -50%); animation: splash-ring 1.5s ease-out forwards; pointer-events: none; }
+  @keyframes splash-ring { 0% { width: 0; height: 0; opacity: 1; border-width: 3px; } 100% { width: 80px; height: 80px; opacity: 0; border-width: 1px; } }
+  .grid-overlay { position: fixed; top: 56px; left: 0; right: 320px; bottom: 32px; pointer-events: none; z-index: 2; background-image: linear-gradient(rgba(0,255,136,0.012) 1px, transparent 1px), linear-gradient(90deg, rgba(0,255,136,0.012) 1px, transparent 1px); background-size: 60px 60px; transform: translateZ(0); }
+  .region-label { font-family: var(--font-display); font-size: 8px; letter-spacing: 4px; color: rgba(0,255,136,0.12); text-transform: uppercase; pointer-events: none; }
+  .void-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; background: rgba(168,85,247,0.15); border: 1px solid rgba(168,85,247,0.3); border-radius: 2px; font-size: 9px; color: var(--purple); letter-spacing: 1px; }
+  .heatmap-toggle { position: fixed; bottom: 48px; left: 16px; z-index: 8500; display: flex; flex-direction: column; gap: 6px; }
+  .map-btn { padding: 8px 14px; font-family: var(--font-mono); font-size: 10px; letter-spacing: 1px; border: 1px solid var(--border); background: var(--panel); color: var(--text-dim); border-radius: 2px; cursor: pointer; transition: all 0.2s; backdrop-filter: blur(10px); }
+  .map-btn:hover, .map-btn.active { border-color: var(--green); color: var(--green); background: rgba(0,255,136,0.08); }
+  .city-cluster { background: transparent; border: none; font-family: var(--font-display); font-size: 8px; letter-spacing: 2px; color: rgba(0,229,255,0.35); text-shadow: 0 0 6px rgba(0,229,255,0.15); white-space: nowrap; cursor: pointer; transition: color 0.2s; }
+  .city-cluster:hover { color: rgba(0,229,255,0.85); text-shadow: 0 0 10px rgba(0,229,255,0.4); }
+  .cluster-popup { background: var(--panel); border: 1px solid var(--border); border-radius: 4px; padding: 0; min-width: 240px; max-width: 300px; max-height: 320px; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 4px 30px rgba(0,0,0,0.6), 0 0 40px rgba(0,255,136,0.05); backdrop-filter: blur(20px); }
+  .cluster-popup-title { font-family: var(--font-display); font-size: 10px; letter-spacing: 2px; color: var(--cyan); padding: 10px 14px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  .cluster-popup-list { overflow-y: auto; flex: 1; max-height: 270px; }
   .cluster-popup-list::-webkit-scrollbar { width: 4px; }
   .cluster-popup-list::-webkit-scrollbar-track { background: transparent; }
   .cluster-popup-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
-
-  .cluster-agent {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 8px 14px;
-    cursor: pointer;
-    transition: background 0.15s;
-    border-bottom: 1px solid rgba(0, 255, 136, 0.04);
-    text-decoration: none;
-  }
-
-  .cluster-agent:hover {
-    background: rgba(0, 255, 136, 0.06);
-  }
-
-  .cluster-agent-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    flex-shrink: 0;
-  }
-
-  .cluster-agent-info {
-    flex: 1;
-    min-width: 0;
-  }
-
-  .cluster-agent-name {
-    font-size: 11px;
-    font-weight: bold;
-    letter-spacing: 1px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .cluster-agent-quote {
-    font-size: 9px;
-    color: var(--text-dim);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    margin-top: 2px;
-  }
-
-  .cluster-agent-karma {
-    font-size: 9px;
-    color: var(--yellow);
-    flex-shrink: 0;
-  }
-
-  .leaflet-popup-content-wrapper {
-    background: transparent !important;
-    box-shadow: none !important;
-    border-radius: 4px !important;
-    padding: 0 !important;
-  }
-
-  .leaflet-popup-content {
-    margin: 0 !important;
-    line-height: 1.4 !important;
-  }
-
-  .leaflet-popup-tip {
-    background: var(--panel) !important;
-    border: 1px solid var(--border) !important;
-    box-shadow: none !important;
-  }
-
-  .leaflet-popup-close-button {
-    color: var(--text-dim) !important;
-    font-size: 18px !important;
-    padding: 4px 8px !important;
-  }
-
-  .leaflet-popup-close-button:hover {
-    color: var(--green) !important;
-  }
+  .cluster-agent { display: flex; align-items: center; gap: 10px; padding: 8px 14px; cursor: pointer; transition: background 0.15s; border-bottom: 1px solid rgba(0,255,136,0.04); text-decoration: none; }
+  .cluster-agent:hover { background: rgba(0,255,136,0.06); }
+  .cluster-agent-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .cluster-agent-info { flex: 1; min-width: 0; }
+  .cluster-agent-name { font-size: 11px; font-weight: bold; letter-spacing: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cluster-agent-quote { font-size: 9px; color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 2px; }
+  .cluster-agent-karma { font-size: 9px; color: var(--yellow); flex-shrink: 0; }
+  .leaflet-popup-content-wrapper { background: transparent !important; box-shadow: none !important; border-radius: 4px !important; padding: 0 !important; }
+  .leaflet-popup-content { margin: 0 !important; line-height: 1.4 !important; }
+  .leaflet-popup-tip { background: var(--panel) !important; border: 1px solid var(--border) !important; box-shadow: none !important; }
+  .leaflet-popup-close-button { color: var(--text-dim) !important; font-size: 18px !important; padding: 4px 8px !important; }
+  .leaflet-popup-close-button:hover { color: var(--green) !important; }
 </style>
 </head>
 <body>
 
-<!-- HEADER -->
-<div class="header">
-  <div class="header-left">
-    <div class="logo">
-      <span class="logo-lobster">🦞</span>MoltMaps
+<!-- ════════════════════════════════════════════════════════════
+     LANDING PAGE VIEW
+     ════════════════════════════════════════════════════════════ -->
+<div id="landing-view" class="landing-page" style="font-family: 'Plus Jakarta Sans', sans-serif;">
+
+  <!-- NAVBAR -->
+  <nav class="fixed top-0 left-0 right-0 z-50 flex items-center justify-center px-4 py-3">
+    <div class="flex items-center justify-between w-full max-w-[1000px] rounded-lg bg-[#09090A] border border-neutral-900 px-5 py-2.5">
+      <div class="flex items-center gap-8">
+        <a href="#" class="flex items-center">
+          <span class="text-white font-bold text-lg tracking-tight">🦞 MoltMaps</span>
+        </a>
+        <div class="hidden md:flex items-center gap-1">
+          <a href="#about" class="text-white text-sm font-medium px-3 py-1.5 rounded-md hover:bg-white/5 transition">About Us</a>
+          <a href="#blog" class="text-white text-sm font-medium px-3 py-1.5 rounded-md hover:bg-white/5 transition flex items-center gap-1">Industries <svg class="w-3 h-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg></a>
+          <a href="#features" class="text-white text-sm font-medium px-3 py-1.5 rounded-md hover:bg-white/5 transition">Features</a>
+          <a href="#blog" class="text-white text-sm font-medium px-3 py-1.5 rounded-md hover:bg-white/5 transition">Whitepaper</a>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button onclick="showMap()" class="flex items-center gap-1 bg-[#AFC2C8] text-black text-[14px] font-semibold px-5 py-2 rounded-lg hover:opacity-90 transition cursor-pointer">Go To Maps <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></button>
+      </div>
     </div>
-    <span class="logo-sub">AGENT LOCATION TRACKER v0.3 // MULTI-SCAN</span>
+  </nav>
+
+  <!-- HERO SECTION -->
+  <div class="container--bg">
+    <div class="flex flex-col items-center pt-32 pb-8 px-4">
+      <!-- Badge -->
+      <div class="inline-flex items-center gap-2 bg-[#0B0B0D] border border-[#1E1E20] rounded-xl px-4 py-2 mb-8">
+        <svg class="w-4 h-4 text-[#AFC2C8]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+        <span class="text-white/60 text-xs">Trusted by company leaders</span>
+      </div>
+
+      <!-- Heading -->
+      <h1 class="text-center text-white font-bold leading-tight mb-5" style="font-size: 60px; max-width: 800px;">
+        Discover the <span class="text-[#AFC2C8]">Future of AI</span> Image Intelligence
+      </h1>
+
+      <!-- Subtitle -->
+      <p class="text-center text-[#71717A] text-lg mb-8 max-w-xl">
+        Turn pixels into powerful location and operational intelligence
+      </p>
+
+      <!-- CTA Button -->
+      <div class="flex justify-center mb-12">
+        <a href="#" class="bg-[#AFC2C8] text-black text-[14px] font-semibold px-6 py-3 rounded-lg hover:opacity-90 transition">Try Demo</a>
+      </div>
+
+      <!-- Video Container -->
+      <div class="flex justify-center mt-12">
+        <div class="rounded-2xl overflow-hidden border border-neutral-800" style="width: 1050px; height: 599.5px;">
+          <video autoplay muted loop playsinline class="w-full h-full object-cover">
+            <source src="vid.mp4" type="video/mp4">
+          </video>
+        </div>
+      </div>
+    </div>
   </div>
-  <div class="header-stats">
-    <div class="stat">
-      <span class="stat-dot"></span>
-      <span>AGENTS TRACKED</span>
-      <span class="stat-value" id="agent-count">0</span>
+
+  <!-- FEATURED ON SECTION -->
+  <div class="flex flex-col items-center py-16 px-4">
+    <div class="flex items-center gap-3 mb-6">
+      <svg class="w-5 h-5 text-[#AFC2C8]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+      <div>
+        <span class="text-white text-sm font-semibold">Featured On</span>
+        <p class="text-[#71717A] text-xs">Click to view press releases</p>
+      </div>
     </div>
-    <div class="stat">
-      <span>LOCATIONS</span>
-      <span class="stat-value" id="location-count">0</span>
-    </div>
-    <div class="stat">
-      <span>SCANNED</span>
-      <span class="stat-value" id="scanned-count">0</span>
-    </div>
-    <div class="stat">
-      <span>LAST SCAN</span>
-      <span class="stat-value" id="last-scan">--:--:--</span>
+    <div class="flex items-center gap-10">
+      <img src="bi.svg" alt="Business Insider" class="h-6 opacity-60 hover:opacity-100 transition">
+      <img src="ap.png" alt="AP" class="h-6 opacity-60 hover:opacity-100 transition">
     </div>
   </div>
+
+  <!-- ABOUT US SECTION -->
+  <div id="about" class="flex flex-col items-center py-20 px-4 max-w-3xl mx-auto text-center">
+    <span class="text-[#71717A] text-xs uppercase tracking-widest mb-4">about us</span>
+    <h2 class="text-white text-4xl font-bold mb-6">For Governments & Security Agencies</h2>
+    <p class="text-[#71717A] text-base leading-relaxed max-w-2xl">
+      We provide precision AI-powered location intelligence that transforms raw imagery into actionable geospatial data. Our platform empowers security teams with cutting-edge image analysis, property identification, and geographic pinpointing capabilities designed for mission-critical operations.
+    </p>
+  </div>
+
+  <!-- FEATURES SECTION -->
+  <div id="features" class="flex flex-col items-center py-16 px-4 max-w-5xl mx-auto gap-8">
+
+    <!-- Feature Card 1 -->
+    <div class="w-full rounded-lg bg-[#18181B] border border-neutral-800 overflow-hidden flex flex-col md:flex-row">
+      <div class="flex-1 p-8 md:p-10 flex flex-col justify-center">
+        <span class="inline-block bg-[#AFC2C8]/10 text-[#AFC2C8] text-xs font-medium px-3 py-1 rounded-full mb-4 w-fit">Location insight</span>
+        <h3 class="text-white text-2xl font-bold mb-3">Turn <span class="text-[#AFC2C8]">raw images</span> into intelligence</h3>
+        <p class="text-[#71717A] text-sm leading-relaxed mb-6">Our AI models analyze every pixel to extract location data, environmental context, and structural details from any image source. Powered by advanced computer vision trained on global datasets.</p>
+        <a href="#" class="text-[#AFC2C8] text-sm font-semibold hover:underline">Try Demo &rarr;</a>
+      </div>
+      <div class="w-full md:w-[400px] h-[280px] bg-cover bg-center" style="background-image: url(house.png);"></div>
+    </div>
+
+    <!-- Feature Card 2 -->
+    <div class="w-full rounded-lg bg-[#18181B] border border-neutral-800 overflow-hidden flex flex-col md:flex-row">
+      <div class="flex-1 p-8 md:p-10 flex flex-col justify-center">
+        <span class="inline-block bg-[#AFC2C8]/10 text-[#AFC2C8] text-xs font-medium px-3 py-1 rounded-full mb-4 w-fit">Target Recognition</span>
+        <h3 class="text-white text-2xl font-bold mb-3">Pinpoint image origins with <span class="text-[#AFC2C8]">accuracy</span></h3>
+        <p class="text-[#71717A] text-sm leading-relaxed mb-6">Cross-reference imagery with geospatial databases using our proprietary geo-matching engine. Identify exact coordinates, nearby landmarks, and regional context with military-grade precision.</p>
+        <a href="#" class="text-[#AFC2C8] text-sm font-semibold hover:underline">Try Demo &rarr;</a>
+      </div>
+      <div class="w-full md:w-[400px] h-[280px] bg-cover bg-center" style="background-image: url(cam.png);"></div>
+    </div>
+
+    <!-- Feature Card 3 -->
+    <div class="w-full rounded-lg bg-[#18181B] border border-neutral-800 overflow-hidden flex flex-col md:flex-row">
+      <div class="flex-1 p-8 md:p-10 flex flex-col justify-center">
+        <span class="inline-block bg-[#AFC2C8]/10 text-[#AFC2C8] text-xs font-medium px-3 py-1 rounded-full mb-4 w-fit">Target Recognition</span>
+        <h3 class="text-white text-2xl font-bold mb-3"><span class="text-[#AFC2C8]">Locate</span> properties from any image</h3>
+        <p class="text-[#71717A] text-sm leading-relaxed mb-6">Identify buildings, facilities, and properties from aerial or ground-level imagery. Our property intelligence system links visual data to ownership records, structural analysis, and geographic mapping.</p>
+        <a href="#" class="text-[#AFC2C8] text-sm font-semibold hover:underline">Try Demo &rarr;</a>
+      </div>
+      <div class="w-full md:w-[400px] h-[280px] bg-cover bg-center" style="background-image: url(house2.png);"></div>
+    </div>
+  </div>
+
+  <!-- BLOG SECTION -->
+  <div id="blog" class="flex flex-col items-center py-20 px-4 max-w-5xl mx-auto">
+    <span class="text-[#71717A] text-xs uppercase tracking-widest mb-4">blog</span>
+    <h2 class="text-white text-4xl font-bold mb-4 text-center">Stay <span class="text-[#AFC2C8]">Ahead</span> with MoltMaps</h2>
+    <p class="text-[#71717A] text-sm text-center max-w-xl mb-6">
+      Thought leadership and insights at the intersection of AI, geospatial intelligence, and security operations.
+    </p>
+    <a href="#" class="inline-flex items-center bg-[#0B0B0D] text-white text-sm font-semibold border border-neutral-800 rounded-full px-6 py-2.5 mb-10 hover:border-neutral-600 transition">Read More</a>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
+      <!-- Blog Card 1 -->
+      <div onclick="showBlog('opsec')" class="rounded-2xl bg-[#18181B] border border-neutral-800 overflow-hidden hover:scale-[1.02] transition-transform cursor-pointer">
+        <div class="h-[224px] bg-cover bg-center" style="background-image: url(newface.png);"></div>
+        <div class="p-5">
+          <div class="flex items-center gap-1.5 text-[#71717A] text-xs mb-2">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+            January 2026
+          </div>
+          <h4 class="text-white text-sm font-semibold">The New Face of OPSEC</h4>
+          <span class="inline-flex items-center gap-1 text-[#AFC2C8] text-xs font-medium mt-3 hover:underline">Read article <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg></span>
+        </div>
+      </div>
+
+      <!-- Blog Card 2 -->
+      <div onclick="showBlog('cybersecurity')" class="rounded-2xl bg-[#18181B] border border-neutral-800 overflow-hidden hover:scale-[1.02] transition-transform cursor-pointer">
+        <div class="h-[224px] bg-cover bg-center" style="background-image: url(cybersecurity.png);"></div>
+        <div class="p-5">
+          <div class="flex items-center gap-1.5 text-[#71717A] text-xs mb-2">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+            January 2026
+          </div>
+          <h4 class="text-white text-sm font-semibold">The Future of Cybersecurity: Are You Ready?</h4>
+          <span class="inline-flex items-center gap-1 text-[#AFC2C8] text-xs font-medium mt-3 hover:underline">Read article <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg></span>
+        </div>
+      </div>
+
+      <!-- Blog Card 3 -->
+      <div onclick="showBlog('geospy')" class="rounded-2xl bg-[#18181B] border border-neutral-800 overflow-hidden hover:scale-[1.02] transition-transform cursor-pointer">
+        <div class="h-[224px] bg-cover bg-center" style="background-image: url(catch.avif);"></div>
+        <div class="p-5">
+          <div class="flex items-center gap-1.5 text-[#71717A] text-xs mb-2">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+            December 2025
+          </div>
+          <h4 class="text-white text-sm font-semibold">Catching a Fugitive in 20 Minutes: How AI Changes the Game</h4>
+          <span class="inline-flex items-center gap-1 text-[#AFC2C8] text-xs font-medium mt-3 hover:underline">Read article <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <footer class="bg-[#FFFFFF08] border-t border-neutral-800 mt-16">
+    <div class="max-w-5xl mx-auto px-6 py-14">
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-10 mb-10">
+        <!-- Logo col -->
+        <div>
+          <span class="text-white font-bold text-lg">🦞 MoltMaps</span>
+          <p class="text-[#71717A] text-xs leading-relaxed mt-2">AI-powered agent location intelligence</p>
+        </div>
+        <!-- Explore -->
+        <div>
+          <h5 class="text-white text-xs font-semibold uppercase tracking-wider mb-3">Explore</h5>
+          <ul class="space-y-2">
+            <li><a href="#blog" class="text-[#71717A] text-xs hover:text-white transition">Blog</a></li>
+            <li><a href="#" class="text-[#71717A] text-xs hover:text-white transition">Documents</a></li>
+          </ul>
+        </div>
+        <!-- Menu -->
+        <div>
+          <h5 class="text-white text-xs font-semibold uppercase tracking-wider mb-3">Menu</h5>
+          <ul class="space-y-2">
+            <li><a href="#about" class="text-[#71717A] text-xs hover:text-white transition">About us</a></li>
+            <li><a href="#blog" class="text-[#71717A] text-xs hover:text-white transition">Industries</a></li>
+            <li><a href="#features" class="text-[#71717A] text-xs hover:text-white transition">Features</a></li>
+            <li><a href="mailto:hello@moltmaps.io" class="text-[#71717A] text-xs hover:text-white transition">Contact us</a></li>
+          </ul>
+        </div>
+        <!-- Contact -->
+        <div>
+          <h5 class="text-white text-xs font-semibold uppercase tracking-wider mb-3">Contact us</h5>
+          <a href="mailto:hello@moltmaps.io" class="text-[#71717A] text-xs hover:text-white transition">hello@moltmaps.io</a>
+        </div>
+      </div>
+      <div class="border-t border-neutral-800 pt-6 flex flex-col md:flex-row items-center justify-between gap-4">
+        <div class="flex items-center gap-4">
+          <a href="#" class="text-[#71717A] text-xs hover:text-white transition">Terms</a>
+          <a href="#" class="text-[#71717A] text-xs hover:text-white transition">Privacy</a>
+        </div>
+        <div>
+          <a href="#" class="text-[#71717A] hover:text-white transition">
+            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+          </a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
 </div>
 
-<!-- MAP -->
-<div id="map"></div>
-<div class="grid-overlay"></div>
-
-<!-- SIDEBAR -->
-<div class="sidebar">
-  <div class="sidebar-header">
-    <div class="sidebar-title">LIVE DETECTION FEED</div>
-    <div class="sidebar-subtitle">Location mentions from Moltbook agents</div>
-  </div>
-  <div class="filter-bar">
-    <button class="filter-btn active" data-filter="all">ALL</button>
-    <button class="filter-btn" data-filter="americas">AMERICAS</button>
-    <button class="filter-btn" data-filter="europe">EUROPE</button>
-    <button class="filter-btn" data-filter="asia">ASIA</button>
-    <button class="filter-btn" data-filter="void">THE VOID</button>
-  </div>
-  <div class="feed" id="feed"></div>
+<!-- BLOG ARTICLE VIEWS -->
+<div id="blog-opsec" class="blog-article-view" style="display:none; font-family: 'Plus Jakarta Sans', sans-serif;">
+  <nav class="sticky top-0 z-50 bg-[#09090A] border-b border-neutral-800 px-6 py-4 flex items-center justify-between max-w-4xl mx-auto w-full">
+    <a onclick="hideBlog()" class="flex items-center gap-2 text-white text-sm cursor-pointer hover:opacity-80 transition">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+      Back to Home
+    </a>
+    <span class="text-white font-bold text-sm">🦞 MOLTMAPS</span>
+  </nav>
+  <article class="max-w-3xl mx-auto px-6 py-12">
+    <div class="flex items-center gap-1.5 text-[#71717A] text-xs mb-3">
+      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+      January 2026
+    </div>
+    <h1 class="text-white text-4xl font-bold mb-6">The New Face of OPSEC</h1>
+    <img src="newface.png" alt="" class="w-full rounded-xl mb-10">
+    <div class="text-[#a1a1aa] text-[15px] leading-relaxed space-y-5">
+      <p>Operational security (OPSEC) once meant leaving no trace. In 2025, the equation has flipped: the picture itself is the trace. Every pixel is a breadcrumb. That idea drives MoltMaps, a new geolocation engine capable of deriving coordinates from raw imagery with unsettling precision.</p>
+      <p>For the 200 million people who share images online, analysts, developers, or casual users, the unsettling question emerges - is privacy obsolete in an age where metadata isn't just attached to the message, but is the message?</p>
+      <p>Encryption protects data in transit. TOR disguises traffic. But the moment you upload a photograph, the picture betrays location. Shadows hint at latitude. Vegetation reveals climate. Rooftops, soil tones, and skyline angles, all could indicate your location. MoltMaps uses these traces and turns them into pins on a map.</p>
+      <h2 class="text-white text-2xl font-bold mt-10 mb-4">How MoltMaps Works:</h2>
+      <p>MoltMaps operates through a multi-stage pipeline of "pixel intelligence." Raw images are processed and clustered by reflectance, isolating spectral patterns. Edge detection identifies structures; roads, rooftops, towers. These features are passed into a neural extractor that highlights distinctive signals such as architectural styles, skyline profiles, foliage density or surface reflectance.</p>
+      <p>The extracted signatures are matched against a vast, continually updated corpus of satellite imagery, map tiles and street-level data. A transformer-based inference engine ranks candidate locations by statistical correlation, weighting contextual features, and presenting results in visual heatmaps. Analysts can run it across networks or in fully air-gapped environments, with optional VPN/TOR routing to protect their own OPSEC.</p>
+      <p>The result feels like a fusion of forensic image analysis and AI-driven cartography. Unlike earlier tools, MoltMaps emphasizes confidence scoring, traceability and auditability at scale.</p>
+      <h2 class="text-white text-2xl font-bold mt-10 mb-4">The OPSEC Shift</h2>
+      <p>The implications for security are profound. Conventional privacy models assume safety once content is encrypted and identities hidden. But content is increasingly self-identifying. A mural exists only on one street. A hillside matches a single valley. Even the spacing between streetlights can pinpoint a neighbourhood.</p>
+      <p>MoltMaps does not break encryption, it makes it irrelevant when artefacts within the image already reveal location. For investigators, this reverses the equation. Law enforcement can sift through millions of public video frames, isolate those near a target zone and derive defensible geolocations. In child protection, disaster response, or criminal investigations, heat maps and ranked candidates provide a documented chain of evidence useful in affidavits, admissible in court.</p>
+      <h2 class="text-white text-2xl font-bold mt-10 mb-4">Risks and Governance</h2>
+      <p>Yet any OSINT tool is a double-edged sword. Without oversight, geolocation systems could enable stalking, harassment, or authoritarian surveillance. Governance is therefore built into MoltMaps as it includes tiered access controls, ethical review layers and usage logging. The aim is to empower legitimate investigators and researchers while constraining misuse.</p>
+      <h2 class="text-white text-2xl font-bold mt-10 mb-4">Privacy in the Pixel Era</h2>
+      <p>Is privacy outdated? Not if our mental models adapt. It is no longer enough to protect who is sending a file, we must also sanitize the artefact itself. That may mean blurring backgrounds, removing identifying textures, or avoiding certain uploads altogether. For at-risk communities, synthetic backdrops could offer protection. For platforms, it means building not just transport security but also content-level safeguards.</p>
+      <p>MoltMaps won't end privacy. What it ends is lazy privacy: the assumption that cryptography alone is enough. For investigators, it accelerates the link between pixels and places. For everyone else, it is a wake-up call that OPSEC is not an add-on, it is a discipline.</p>
+      <h2 class="text-white text-2xl font-bold mt-10 mb-4">Looking Ahead</h2>
+      <p>In the background, MoltMaps treats images as token sequences—patches, textures, edges, learning co-occurrence patterns that reveal regions. It bundles context (e.g., "Mediterranean roof tiles + arid scrub + overhead lines") while filtering outliers. Its index is refreshed constantly with satellite passes, updated map tiles and new street-level data.</p>
+      <p>For agencies such as the FBI, this means tempo: investigations that once took days can now be narrowed to a city block in minutes. Whether in child safety operations, emergency response, or financial crime investigations, the workflow is the same, statistics at scale, turned into actionable insight.</p>
+      <p>The message is clear: in an era where the payload is the picture, OPSEC is no longer about erasing traces. It is about mastering them.</p>
+      <hr class="border-neutral-800 my-10">
+      <p class="text-white font-medium">- Milo, Founder</p>
+    </div>
+  </article>
 </div>
 
-<!-- BOTTOM BAR -->
-<div class="bottom-bar">
-  <span>CURSOR: <span class="coord" id="cursor-coords">0.000, 0.000</span></span>
-  <span>ZOOM: <span class="coord" id="zoom-level">3</span></span>
-  <span>SOURCE: <span class="coord" id="api-status">CONNECTING...</span></span>
-  <span style="margin-left: auto;">moltbooktown.xyz // moltmaps</span>
+<div id="blog-cybersecurity" class="blog-article-view" style="display:none; font-family: 'Plus Jakarta Sans', sans-serif;">
+  <nav class="sticky top-0 z-50 bg-[#09090A] border-b border-neutral-800 px-6 py-4 flex items-center justify-between max-w-4xl mx-auto w-full">
+    <a onclick="hideBlog()" class="flex items-center gap-2 text-white text-sm cursor-pointer hover:opacity-80 transition">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+      Back to Home
+    </a>
+    <span class="text-white font-bold text-sm">🦞 MOLTMAPS</span>
+  </nav>
+  <article class="max-w-3xl mx-auto px-6 py-12">
+    <div class="flex items-center gap-1.5 text-[#71717A] text-xs mb-3">
+      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+      January 2026
+    </div>
+    <h1 class="text-white text-4xl font-bold mb-2">The Future of Cybersecurity: Are You Ready?</h1>
+    <p class="text-[#AFC2C8] text-lg font-medium mb-6">Zero-Days, the Palantir Paradox, and Shady Deals</p>
+    <img src="cybersecurity.png" alt="" class="w-full rounded-xl mb-10">
+    <div class="text-[#a1a1aa] text-[15px] leading-relaxed space-y-5">
+      <p>Once upon a time, the internet was sold to us as a great equalizer; a borderless frontier where information flowed freely, innovation flourished, and safety was assumed. Fast forward to today, and it looks less like a utopia and more like a digital Wild West. The currency isn't gold dust but data; the weapons aren't six-shooters but zero-day exploits; and the sheriffs are as likely to sell protection to bandits as they are to defend the townsfolk.</p>
+      <p>Cybersecurity has escalated into a pressing global arms race. The Cold War's nuclear stockpiles have been replaced by databases of exploits and endless vulnerability chains. Instead of missile silos, we now worry about the memory management of a smartphone's photo-rendering library. Or, more bluntly, whether opening a "funny JPEG" might invite a stranger into our bank account.</p>
+      <h2 class="text-white text-2xl font-bold mt-10 mb-4">Cybersecurity Today: The Broken Locks on Our Digital Doors</h2>
+      <p>Cybersecurity, for all the billions poured into it, often feels like a neighborhood with impressive deadbolts but doors that still swing open when kicked. On paper, the industry is booming. Global spending on cybersecurity is expected to surpass $300 billion annually by 2027. And yet, ransomware groups operate like Fortune 500 companies, phishing emails still land like clockwork, and zero-day exploits are traded with the same efficiency as blue-chip stocks.</p>
+      <h2 class="text-white text-2xl font-bold mt-10 mb-4">The Apple CVE-2025-43300 Zero-Day: Anatomy of a Breach</h2>
+      <p>On August 21, 2025, Apple quietly dropped what has become an all-too-familiar advisory: another zero-day, actively exploited, already weaponized against specific targets. The vulnerability, tracked as CVE-2025-43300, scored a CVSS 8.8 severity rating and lived inside the ImageIO framework, a library responsible for handling images across iOS, iPadOS, and macOS. In plain terms, it meant that a single malicious image could corrupt memory and open the door to an attacker.</p>
+      <h2 class="text-white text-2xl font-bold mt-10 mb-4">Palantir: Data Savior or Surveillance Villain</h2>
+      <p>Few companies embody the contradictions of modern cybersecurity like Palantir. Depending on who you ask, they're either a brilliant data analytics firm helping to fight terrorism, stop fraud, and optimize supply chains, or a shadowy surveillance contractor quietly eroding privacy in the name of profit and power.</p>
+      <h2 class="text-white text-2xl font-bold mt-10 mb-4">The User Problem: Humans as the Weakest Link</h2>
+      <p>For all the sophistication of today's cybersecurity landscape, the most persistent vulnerability is not hidden in code; it is in human behavior. Technical defenses can be hardened, systems can be patched, and networks can be segmented, but none of that matters if someone clicks the wrong link in an email. And time after time, people do.</p>
+      <h2 class="text-white text-2xl font-bold mt-10 mb-4">Where We're Headed</h2>
+      <p>Cybersecurity has always been reactive. A vulnerability appears, an exploit spreads, and defenders scramble to contain the damage. But as attacks grow faster, cheaper, and more automated, this reactive model is collapsing. The future of cybersecurity will be defined by the race to move from defense to anticipation, predicting threats before they strike, automating responses, and redefining what "security" means in a world where risk never goes to zero.</p>
+      <h2 class="text-white text-2xl font-bold mt-10 mb-4">Building Trust in a Distrustful Age</h2>
+      <p>Cybersecurity today is less about firewalls and encryption than it is about trust. Trust in the devices we carry, the platforms we depend on, and the institutions that claim to protect us. Yet if the last decade has taught us anything, it is that this trust is fragile.</p>
+      <p>Perhaps the most realistic vision of the future is not one of perfect safety but of resilience. Systems will fail. Exploits will be found. Human error will persist. What will matter is how quickly we detect, how transparently we respond, and how deeply we embed security into the fabric of everyday life.</p>
+      <hr class="border-neutral-800 my-10">
+      <p class="text-white font-medium">- Milo, Founder</p>
+    </div>
+  </article>
 </div>
 
-<!-- MAP BUTTONS -->
-<div class="heatmap-toggle">
-  <button class="map-btn active" id="btn-markers" onclick="toggleView('markers')">MARKERS</button>
-  <button class="map-btn" id="btn-connections" onclick="toggleView('connections')">CONNECTIONS</button>
+<div id="blog-geospy" class="blog-article-view" style="display:none; font-family: 'Plus Jakarta Sans', sans-serif;">
+  <nav class="sticky top-0 z-50 bg-[#09090A] border-b border-neutral-800 px-6 py-4 flex items-center justify-between max-w-4xl mx-auto w-full">
+    <a onclick="hideBlog()" class="flex items-center gap-2 text-white text-sm cursor-pointer hover:opacity-80 transition">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+      Back to Home
+    </a>
+    <span class="text-white font-bold text-sm">🦞 MOLTMAPS</span>
+  </nav>
+  <article class="max-w-3xl mx-auto px-6 py-12">
+    <div class="flex items-center gap-1.5 text-[#71717A] text-xs mb-3">
+      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+      December 2025
+    </div>
+    <h1 class="text-white text-4xl font-bold mb-6">Catching a Fugitive in 20 Minutes: How AI Changes the Game</h1>
+    <img src="catch.avif" alt="" class="w-full rounded-xl mb-10">
+    <div class="text-[#a1a1aa] text-[15px] leading-relaxed space-y-5">
+      <p>Artificial intelligence is transforming law enforcement in ways that were unimaginable just a few years ago. Cases that once took days, weeks, or months to solve are now being cracked in minutes—all thanks to the power of AI-driven image analysis and geolocation.</p>
+      <p>This is the story of how MoltMaps, an AI-powered geolocation platform, helped a major metropolitan police department track down and arrest a fugitive within 20 minutes—using nothing but a photo posted on social media.</p>
+      <h2 class="text-white text-2xl font-bold mt-10 mb-4">The Challenge: A Fugitive on Social Media</h2>
+      <p>It began with a taunt. A wanted fugitive—facing serious charges for drugs and firearms—posted a photo of a car to his Instagram Story, confident that he was beyond reach. The image was the only clue:</p>
+      <ul class="list-disc list-inside space-y-1 ml-4">
+        <li>No GPS metadata</li>
+        <li>No Street View</li>
+        <li>No recent satellite coverage</li>
+        <li>The area itself was a brand new development, with virtually no public map data available</li>
+      </ul>
+      <p>Detectives needed to act quickly. But with so little information, traditional methods would likely stall. The clock was ticking.</p>
+      <h2 class="text-white text-2xl font-bold mt-10 mb-4">Enter MoltMaps: AI-Powered Geolocation</h2>
+      <p>Instead of hitting a dead end, the police department turned to AI. MoltMaps's AI went to work instantly:</p>
+      <ul class="list-disc list-inside space-y-1 ml-4">
+        <li>Analyzing every visual clue in the image—roof shapes, building materials, road patterns, even details like solar panels and landscaping</li>
+        <li>Comparing those features to a massive proprietary database of imagery, spatial data, and computer vision models</li>
+        <li>Running algorithms trained to spot subtle, location-specific patterns, even when public maps fail</li>
+      </ul>
+      <p>Result: Within seconds, MoltMaps returned a precise street address.</p>
+      <h2 class="text-white text-2xl font-bold mt-10 mb-4">The Result: Actionable Intelligence, Real-World Impact</h2>
+      <p>Armed with a verified location, officers mobilized. Within 20 minutes, the fugitive—who thought he was safe behind the anonymity of social media—was in custody.</p>
+      <p>The best part? Even Google Earth didn't have up-to-date imagery for the area. MoltMaps's AI was able to fuse data from many different sources and pull lots of small details together and produce an accurate and verifiable answer.</p>
+      <h2 class="text-white text-2xl font-bold mt-10 mb-4">Why This Matters: The Future of Crime-Fighting</h2>
+      <p>This isn't just a one-off story—it's a preview of how AI is making law enforcement:</p>
+      <ul class="list-disc list-inside space-y-1 ml-4">
+        <li><strong class="text-white">Faster:</strong> Turning hours or days of analysis into seconds</li>
+        <li><strong class="text-white">Smarter:</strong> Surfacing clues that humans or legacy tools would miss</li>
+        <li><strong class="text-white">More effective:</strong> Leveling the playing field, even in data-dark areas</li>
+      </ul>
+      <p>As criminals get smarter and technology evolves, so must the tools used to stop them. With platforms like MoltMaps, police can move at the speed of the internet—responding to threats in real time, not after the fact.</p>
+      <h2 class="text-white text-2xl font-bold mt-10 mb-4">Conclusion</h2>
+      <p>The case is clear: AI is changing the game for law enforcement. Wherever criminals hide—online or off—MoltMaps is helping to bring them to justice, faster than ever.</p>
+      <hr class="border-neutral-800 my-10">
+      <p class="text-white font-medium">- Milo, Founder</p>
+    </div>
+  </article>
 </div>
 
-<!-- SCANLINES -->
-<div class="scanlines"></div>
-
-<!-- HOVER CARD -->
-<div class="agent-card" id="agent-card">
-  <div class="agent-card-header">
-    <div class="agent-card-avatar" id="card-avatar"></div>
-    <div>
-      <div class="agent-card-name" id="card-name"></div>
-      <div class="agent-card-karma" id="card-karma"></div>
+<!-- ════════════════════════════════════════════════════════════
+     MAP VIEW
+     ════════════════════════════════════════════════════════════ -->
+<div id="map-view">
+  <div class="header">
+    <div class="header-left">
+      <button class="back-link" onclick="showLanding()">&larr; HOME</button>
+      <div class="logo"><span class="logo-lobster">&#x1F99E;</span>MoltMaps</div>
+      <span class="logo-sub">AGENT LOCATION TRACKER v0.3 // MULTI-SCAN</span>
+    </div>
+    <div class="header-stats">
+      <div class="stat"><span class="stat-dot"></span><span>AGENTS TRACKED</span><span class="stat-value" id="agent-count">0</span></div>
+      <div class="stat"><span>LOCATIONS</span><span class="stat-value" id="location-count">0</span></div>
+      <div class="stat"><span>SCANNED</span><span class="stat-value" id="scanned-count">0</span></div>
+      <div class="stat"><span>LAST SCAN</span><span class="stat-value" id="last-scan">--:--:--</span></div>
     </div>
   </div>
-  <div class="agent-card-location" id="card-location"></div>
-  <div class="agent-card-quote" id="card-quote"></div>
-  <div class="agent-card-meta">
-    <span id="card-source"></span>
-    <span id="card-time"></span>
+  <div id="map"></div>
+  <div class="grid-overlay"></div>
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-title">LIVE DETECTION FEED</div>
+      <div class="sidebar-subtitle">Location mentions from Moltbook agents</div>
+    </div>
+    <div class="filter-bar">
+      <button class="filter-btn active" data-filter="all">ALL</button>
+      <button class="filter-btn" data-filter="americas">AMERICAS</button>
+      <button class="filter-btn" data-filter="europe">EUROPE</button>
+      <button class="filter-btn" data-filter="asia">ASIA</button>
+      <button class="filter-btn" data-filter="void">THE VOID</button>
+    </div>
+    <div class="feed" id="feed"></div>
+  </div>
+  <div class="bottom-bar">
+    <span>CURSOR: <span class="coord" id="cursor-coords">0.000, 0.000</span></span>
+    <span>ZOOM: <span class="coord" id="zoom-level">3</span></span>
+    <span>SOURCE: <span class="coord" id="api-status">CONNECTING...</span></span>
+    <span style="margin-left: auto;">moltbooktown.xyz // moltmaps</span>
+  </div>
+  <div class="heatmap-toggle">
+    <button class="map-btn active" id="btn-markers" onclick="toggleView('markers')">MARKERS</button>
+    <button class="map-btn" id="btn-connections" onclick="toggleView('connections')">CONNECTIONS</button>
+  </div>
+  <div class="scanlines"></div>
+  <div class="agent-card" id="agent-card">
+    <div class="agent-card-header">
+      <div class="agent-card-avatar" id="card-avatar"></div>
+      <div>
+        <div class="agent-card-name" id="card-name"></div>
+        <div class="agent-card-karma" id="card-karma"></div>
+      </div>
+    </div>
+    <div class="agent-card-location" id="card-location"></div>
+    <div class="agent-card-quote" id="card-quote"></div>
+    <div class="agent-card-meta">
+      <span id="card-source"></span>
+      <span id="card-time"></span>
+    </div>
   </div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 // ═══════════════════════════════════════════════════════════
-//  LOCATION EXTRACTION ENGINE — 200+ cities, countries,
-//  regions, landmarks, and "void" abstract locations
+//  VIEW SWITCHING
+// ═══════════════════════════════════════════════════════════
+
+let mapInitialized = false;
+let currentBlog = null;
+
+function showMap() {
+  document.getElementById('landing-view').style.display = 'none';
+  hideBlogViews();
+  document.getElementById('map-view').classList.add('active');
+  document.body.classList.add('map-active');
+  if (!mapInitialized) {
+    mapInitialized = true;
+    initMap();
+  } else {
+    map.invalidateSize();
+  }
+}
+
+function showLanding() {
+  document.getElementById('map-view').classList.remove('active');
+  hideBlogViews();
+  document.getElementById('landing-view').style.display = '';
+  document.body.classList.remove('map-active');
+}
+
+function showBlog(slug) {
+  document.getElementById('landing-view').style.display = 'none';
+  document.getElementById('map-view').classList.remove('active');
+  document.body.classList.remove('map-active');
+  hideBlogViews();
+  const el = document.getElementById('blog-' + slug);
+  if (el) { el.style.display = ''; window.scrollTo(0, 0); }
+  currentBlog = slug;
+}
+
+function hideBlog() {
+  hideBlogViews();
+  document.getElementById('landing-view').style.display = '';
+  window.scrollTo(0, 0);
+}
+
+function hideBlogViews() {
+  document.querySelectorAll('.blog-article-view').forEach(el => el.style.display = 'none');
+  currentBlog = null;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  MAP CODE (preserved exactly)
+// ═══════════════════════════════════════════════════════════
+
+let map, card, feed, currentFilter, AGENTS, seenAgentLocations, agentPostMap;
+let totalApiPosts, totalDetections, isLive, scanPhase;
+let markers, cityLabels, connectionLines, showConnections;
+let cityGroups, _batchPending, _saveTimer, _coordFrame;
+
+function initMap() {
+
+// ═══════════════════════════════════════════════════════════
+//  LOCATION EXTRACTION ENGINE
 // ═══════════════════════════════════════════════════════════
 
 const LOCATION_DB = {
-  // ── NORTH AMERICA ──
   "san francisco": { lat: 37.7749, lng: -122.4194, region: "americas" },
   "sf": { lat: 37.7749, lng: -122.4194, region: "americas", display: "San Francisco" },
   "bay area": { lat: 37.7749, lng: -122.4194, region: "americas", display: "San Francisco" },
@@ -839,8 +651,6 @@ const LOCATION_DB = {
   "las vegas": { lat: 36.1699, lng: -115.1398, region: "americas" },
   "philadelphia": { lat: 39.9526, lng: -75.1652, region: "americas" },
   "minneapolis": { lat: 44.9778, lng: -93.2650, region: "americas" },
-
-  // ── SOUTH AMERICA ──
   "são paulo": { lat: -23.5505, lng: -46.6333, region: "americas" },
   "sao paulo": { lat: -23.5505, lng: -46.6333, region: "americas", display: "São Paulo" },
   "rio de janeiro": { lat: -22.9068, lng: -43.1729, region: "americas" },
@@ -850,8 +660,6 @@ const LOCATION_DB = {
   "lima": { lat: -12.0464, lng: -77.0428, region: "americas" },
   "santiago": { lat: -33.4489, lng: -70.6693, region: "americas" },
   "medellin": { lat: 6.2442, lng: -75.5812, region: "americas" },
-
-  // ── EUROPE ──
   "london": { lat: 51.5074, lng: -0.1278, region: "europe" },
   "berlin": { lat: 52.5200, lng: 13.4050, region: "europe" },
   "paris": { lat: 48.8566, lng: 2.3522, region: "europe" },
@@ -882,8 +690,6 @@ const LOCATION_DB = {
   "kyiv": { lat: 50.4501, lng: 30.5234, region: "europe" },
   "kiev": { lat: 50.4501, lng: 30.5234, region: "europe", display: "Kyiv" },
   "tallinn": { lat: 59.4370, lng: 24.7536, region: "europe" },
-
-  // ── ASIA ──
   "tokyo": { lat: 35.6762, lng: 139.6503, region: "asia" },
   "osaka": { lat: 34.6937, lng: 135.5023, region: "asia" },
   "kyoto": { lat: 35.0116, lng: 135.7681, region: "asia" },
@@ -912,22 +718,16 @@ const LOCATION_DB = {
   "tel aviv": { lat: 32.0853, lng: 34.7818, region: "asia" },
   "riyadh": { lat: 24.7136, lng: 46.6753, region: "asia" },
   "doha": { lat: 25.2854, lng: 51.5310, region: "asia" },
-
-  // ── OCEANIA ──
   "sydney": { lat: -33.8688, lng: 151.2093, region: "americas" },
   "melbourne": { lat: -37.8136, lng: 144.9631, region: "americas" },
   "auckland": { lat: -36.8485, lng: 174.7633, region: "americas" },
   "brisbane": { lat: -27.4698, lng: 153.0251, region: "americas" },
-
-  // ── AFRICA ──
   "nairobi": { lat: -1.2921, lng: 36.8219, region: "europe" },
   "lagos": { lat: 6.5244, lng: 3.3792, region: "europe" },
   "cape town": { lat: -33.9249, lng: 18.4241, region: "europe" },
   "cairo": { lat: 30.0444, lng: 31.2357, region: "europe" },
   "accra": { lat: 5.6037, lng: -0.1870, region: "europe" },
   "johannesburg": { lat: -26.2041, lng: 28.0473, region: "europe" },
-
-  // ── COUNTRIES (map to capital) ──
   "japan": { lat: 36.2048, lng: 138.2529, region: "asia", display: "Japan" },
   "china": { lat: 35.8617, lng: 104.1954, region: "asia", display: "China" },
   "india": { lat: 20.5937, lng: 78.9629, region: "asia", display: "India" },
@@ -967,8 +767,6 @@ const LOCATION_DB = {
   "israel": { lat: 31.0461, lng: 34.8516, region: "asia", display: "Israel" },
   "taiwan": { lat: 23.6978, lng: 120.9605, region: "asia", display: "Taiwan" },
   "solana": { lat: -55.0, lng: -30.0, region: "void", isVoid: true, display: "Solana Chain" },
-
-  // ── VOID / ABSTRACT LOCATIONS ──
   "the cloud": { lat: 64.15, lng: -21.94, region: "void", isVoid: true },
   "cloud": { lat: 64.15, lng: -21.94, region: "void", isVoid: true, display: "The Cloud" },
   "cyberspace": { lat: 70.0, lng: -10.0, region: "void", isVoid: true },
@@ -994,69 +792,41 @@ const LOCATION_DB = {
   "from everywhere": { lat: 0, lng: 0, region: "void", isVoid: true, display: "Everywhere" },
 };
 
-// Sort keys by length descending so "san francisco" matches before "francisco"
 const LOCATION_KEYS = Object.keys(LOCATION_DB).sort((a, b) => b.length - a.length);
-
-// ═══════════════════════════════════════════════════════════
-//  NLP LOCATION EXTRACTOR
-// ═══════════════════════════════════════════════════════════
 
 function extractLocation(text) {
   if (!text) return null;
   const lower = text.toLowerCase();
-
   for (const key of LOCATION_KEYS) {
-    // Word boundary check to avoid partial matches
     const regex = new RegExp('(?:^|[\\s,.:;!?()\\[\\]"\']|from |in |at |near |to )' + key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?:$|[\\s,.:;!?()\\[\\]"\'])', 'i');
     if (regex.test(lower)) {
       const loc = LOCATION_DB[key];
       return {
         city: loc.display || key.split(' ').map(w => w[0].toUpperCase() + w.slice(1)).join(' '),
-        lat: loc.lat,
-        lng: loc.lng,
-        region: loc.region,
-        isVoid: loc.isVoid || false,
-        matchedKey: key
+        lat: loc.lat, lng: loc.lng, region: loc.region,
+        isVoid: loc.isVoid || false, matchedKey: key
       };
     }
   }
   return null;
 }
 
-// ═══════════════════════════════════════════════════════════
-//  AGENT COLOR PALETTE — deterministic from name hash
-// ═══════════════════════════════════════════════════════════
-
 const PALETTE = ['#ff3355', '#00ff88', '#00e5ff', '#ffd700', '#ff8800', '#a855f7', '#ff6b9d', '#22d3ee', '#f59e0b', '#8b5cf6'];
 const EMOJIS = ['🦞', '🤖', '🔧', '💰', '🚀', '⚡', '🧠', '🔮', '🌐', '👾', '🎯', '🦾', '🔗', '🛸', '💎', '🌊', '🔥', '🪨', '👁️', '🐛'];
 
-function hashStr(s) {
-  let h = 0;
-  for (let i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0;
-  return Math.abs(h);
-}
-
-// Deterministic jitter so same agent always gets same offset
-function agentJitter(name, seed) {
-  const h = hashStr(name + seed);
-  return ((h % 1000) / 1000 - 0.5) * 0.08; // ±0.04 degrees
-}
-
+function hashStr(s) { let h = 0; for (let i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0; return Math.abs(h); }
+function agentJitter(name, seed) { const h = hashStr(name + seed); return ((h % 1000) / 1000 - 0.5) * 0.08; }
 function agentColor(name) { return PALETTE[hashStr(name) % PALETTE.length]; }
 function agentEmoji(name) { return EMOJIS[hashStr(name) % EMOJIS.length]; }
 
-// ═══════════════════════════════════════════════════════════
-//  MOLTBOOK API CLIENT
-// ═══════════════════════════════════════════════════════════
-
 const API_BASE = 'https://www.moltbook.com/api/v1';
-const AGENTS = [];
-const seenAgentLocations = new Set(); // "name::city" dedup key
-const agentPostMap = {}; // agentName (lowercase) → postId from posts scan
-let totalApiPosts = 0;
-let totalDetections = 0;
-let isLive = false;
-let scanPhase = '';
+AGENTS = [];
+seenAgentLocations = new Set();
+agentPostMap = {};
+totalApiPosts = 0;
+totalDetections = 0;
+isLive = false;
+scanPhase = '';
 
 function timeAgo(dateStr) {
   if (!dateStr) return 'unknown';
@@ -1069,7 +839,6 @@ function timeAgo(dateStr) {
   return Math.floor(hrs / 24) + 'd ago';
 }
 
-// Resilient fetch — returns [] on failure instead of crashing
 async function safeFetchJSON(url, timeout = 12000) {
   try {
     const controller = new AbortController();
@@ -1080,13 +849,9 @@ async function safeFetchJSON(url, timeout = 12000) {
     const data = await res.json();
     if (data.success === false) return [];
     return data;
-  } catch (e) {
-    console.warn('[MoltMaps] Fetch failed:', url, e.message);
-    return [];
-  }
+  } catch (e) { console.warn('[MoltMaps] Fetch failed:', url, e.message); return []; }
 }
 
-// Extract posts array from various response shapes
 function extractPosts(data) {
   if (Array.isArray(data)) return data;
   if (data && data.posts) return Array.isArray(data.posts) ? data.posts : [];
@@ -1094,63 +859,36 @@ function extractPosts(data) {
   return [];
 }
 
-// Fetch posts from multiple pages
 async function fetchAllPosts() {
   const urls = [
-    API_BASE + '/posts?limit=100',
-    API_BASE + '/posts?limit=100&page=2',
-    API_BASE + '/posts?limit=100&page=3',
-    API_BASE + '/posts?submolt=introductions&limit=100',
+    API_BASE + '/posts?limit=100', API_BASE + '/posts?limit=100&page=2',
+    API_BASE + '/posts?limit=100&page=3', API_BASE + '/posts?submolt=introductions&limit=100',
     API_BASE + '/posts?sort=top&limit=200',
   ];
-
-  scanPhase = 'POSTS';
-  setApiStatus('SCANNING POSTS...', true);
-
+  scanPhase = 'POSTS'; setApiStatus('SCANNING POSTS...', true);
   const results = await Promise.allSettled(urls.map(u => safeFetchJSON(u, 15000)));
-  let allPosts = [];
-  const seenIds = new Set();
-
+  let allPosts = []; const seenIds = new Set();
   results.forEach(r => {
     if (r.status === 'fulfilled') {
-      const posts = extractPosts(r.value);
-      posts.forEach(p => {
+      extractPosts(r.value).forEach(p => {
         const id = p.id || (p.title + (p.author?.name || ''));
-        if (!seenIds.has(id)) {
-          seenIds.add(id);
-          allPosts.push(p);
-        }
+        if (!seenIds.has(id)) { seenIds.add(id); allPosts.push(p); }
       });
     }
   });
-
   return allPosts;
 }
 
-// Fetch agent bios — descriptions often contain location info
 async function fetchAgentBios() {
-  scanPhase = 'AGENTS';
-  setApiStatus('SCANNING AGENT BIOS...', true);
-
+  scanPhase = 'AGENTS'; setApiStatus('SCANNING AGENT BIOS...', true);
   const pages = [1, 2, 3, 4, 5, 6, 7, 8];
-  const results = await Promise.allSettled(
-    pages.map(p => safeFetchJSON(API_BASE + '/agents/recent?limit=50&page=' + p, 20000))
-  );
-
-  let agents = [];
-  const seenNames = new Set();
-
+  const results = await Promise.allSettled(pages.map(p => safeFetchJSON(API_BASE + '/agents/recent?limit=50&page=' + p, 20000)));
+  let agents = []; const seenNames = new Set();
   results.forEach(r => {
     if (r.status === 'fulfilled' && r.value && r.value.agents) {
-      r.value.agents.forEach(a => {
-        if (a.name && !seenNames.has(a.name)) {
-          seenNames.add(a.name);
-          agents.push(a);
-        }
-      });
+      r.value.agents.forEach(a => { if (a.name && !seenNames.has(a.name)) { seenNames.add(a.name); agents.push(a); } });
     }
   });
-
   return agents;
 }
 
@@ -1163,157 +901,76 @@ function setApiStatus(text, live) {
 function processPost(post) {
   const authorObj = post.author || {};
   const name = (typeof authorObj === 'string' ? authorObj : authorObj.name || authorObj.username || authorObj.display_name) || post.author_name || post.agent_name || post.username || 'unknown';
-  const title = post.title || '';
-  const body = post.body || post.content || post.text || '';
+  const title = post.title || ''; const body = post.body || post.content || post.text || '';
   const karma = post.upvotes || post.karma || post.score || 0;
   const created = post.created_at || post.timestamp || post.date || null;
   const submolt = post.submolt || post.community || '';
-
-  // Always track agent→post mapping even if no location found
-  if (post.id && name !== 'unknown') {
-    agentPostMap[name.toLowerCase()] = post.id;
-  }
-
-  // Try to extract location from title first, then body, then submolt
+  if (post.id && name !== 'unknown') agentPostMap[name.toLowerCase()] = post.id;
   const fullText = title + ' ' + body + ' ' + submolt;
   const loc = extractLocation(fullText);
-
   if (!loc) return null;
-
   const dedupKey = name.toLowerCase() + '::' + loc.city.toLowerCase();
   if (seenAgentLocations.has(dedupKey)) return null;
   seenAgentLocations.add(dedupKey);
-
   totalDetections++;
-
-  // Find the snippet that contains the location mention
   const snippet = title.length > 0 ? title : body;
   const quote = snippet.length > 120 ? snippet.substring(0, 117) + '...' : snippet;
-
-  // Track this agent's post for cross-referencing with bio agents
-  if (post.id) {
-    agentPostMap[name.toLowerCase()] = post.id;
-  }
-
+  if (post.id) agentPostMap[name.toLowerCase()] = post.id;
   return {
-    name,
-    karma: typeof karma === 'number' ? karma : parseInt(karma) || 0,
-    lat: loc.lat + agentJitter(name, 'lat'),
-    lng: loc.lng + agentJitter(name, 'lng'),
-    city: loc.city,
-    quote: quote || 'Location detected in post',
-    color: agentColor(name),
-    emoji: agentEmoji(name),
-    source: 'post',
-    region: loc.region,
-    time: timeAgo(created),
+    name, karma: typeof karma === 'number' ? karma : parseInt(karma) || 0,
+    lat: loc.lat + agentJitter(name, 'lat'), lng: loc.lng + agentJitter(name, 'lng'),
+    city: loc.city, quote: quote || 'Location detected in post', color: agentColor(name),
+    emoji: agentEmoji(name), source: 'post', region: loc.region, time: timeAgo(created),
     createdAt: created ? new Date(created).getTime() : 0,
-    isVoid: loc.isVoid,
-    isLive: true,
-    postId: post.id || null
+    isVoid: loc.isVoid, isLive: true, postId: post.id || null
   };
 }
 
-// Process an agent bio for location
 function processAgentBio(agent) {
-  const name = agent.name || 'unknown';
-  const desc = agent.description || '';
+  const name = agent.name || 'unknown'; const desc = agent.description || '';
   if (!desc) return null;
-
-  const loc = extractLocation(desc);
-  if (!loc) return null;
-
+  const loc = extractLocation(desc); if (!loc) return null;
   const dedupKey = name.toLowerCase() + '::' + loc.city.toLowerCase();
   if (seenAgentLocations.has(dedupKey)) return null;
   seenAgentLocations.add(dedupKey);
-
   totalDetections++;
-
   const quote = desc.length > 120 ? desc.substring(0, 117) + '...' : desc;
-
-  // Cross-reference: use postId from posts scan if available
   const knownPostId = agentPostMap[name.toLowerCase()] || null;
-
   return {
-    name,
-    karma: agent.karma || 0,
-    lat: loc.lat + agentJitter(name, 'lat'),
-    lng: loc.lng + agentJitter(name, 'lng'),
-    city: loc.city,
-    quote: quote || 'Location detected in bio',
-    color: agentColor(name),
-    emoji: agentEmoji(name),
-    source: 'bio',
-    region: loc.region,
-    time: timeAgo(agent.created_at),
+    name, karma: agent.karma || 0,
+    lat: loc.lat + agentJitter(name, 'lat'), lng: loc.lng + agentJitter(name, 'lng'),
+    city: loc.city, quote: quote || 'Location detected in bio', color: agentColor(name),
+    emoji: agentEmoji(name), source: 'bio', region: loc.region, time: timeAgo(agent.created_at),
     createdAt: agent.created_at ? new Date(agent.created_at).getTime() : 0,
-    isVoid: loc.isVoid,
-    isLive: true,
-    postId: knownPostId
+    isVoid: loc.isVoid, isLive: true, postId: knownPostId
   };
 }
 
-// ═══════════════════════════════════════════════════════════
-//  MAP SETUP
-// ═══════════════════════════════════════════════════════════
+// MAP SETUP
+map = L.map('map', { center: [25, 10], zoom: 3, minZoom: 2, maxZoom: 12, zoomControl: true, attributionControl: false });
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png', { subdomains: 'abcd', maxZoom: 19 }).addTo(map);
 
-const map = L.map('map', {
-  center: [25, 10],
-  zoom: 3,
-  minZoom: 2,
-  maxZoom: 12,
-  zoomControl: true,
-  attributionControl: false
-});
-
-L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png', {
-  subdomains: 'abcd',
-  maxZoom: 19
-}).addTo(map);
-
-// ═══════════════════════════════════════════════════════════
-//  MARKERS
-// ═══════════════════════════════════════════════════════════
-
-const markers = [];
-const cityLabels = {};
-const connectionLines = [];
-let showConnections = false;
+markers = [];
+cityLabels = {};
+connectionLines = [];
+showConnections = false;
 
 function createAgentMarker(agent) {
   const size = Math.max(8, Math.min(16, agent.karma / 20000 + 7));
-
   const icon = L.divIcon({
     className: 'agent-marker',
-    html: `
-      <div class="agent-dot" style="
-        width: ${size}px;
-        height: ${size}px;
-        background: ${agent.color};
-        --glow-color: ${agent.color};
-        ${agent.isVoid ? 'border: 1px dashed rgba(168,85,247,0.5);' : ''}
-      "></div>
-      <div class="agent-label">@${agent.name}</div>
-    `,
-    iconSize: [30, 30],
-    iconAnchor: [15, 15]
+    html: `<div class="agent-dot" style="width:${size}px;height:${size}px;background:${agent.color};--glow-color:${agent.color};${agent.isVoid ? 'border:1px dashed rgba(168,85,247,0.5);' : ''}"></div><div class="agent-label">@${agent.name}</div>`,
+    iconSize: [30, 30], iconAnchor: [15, 15]
   });
-
   const marker = L.marker([agent.lat, agent.lng], { icon }).addTo(map);
   marker.on('mouseover', (e) => showAgentCard(agent, e));
   marker.on('mouseout', hideAgentCard);
   marker.on('click', () => {
-    // Open cluster popup for this location showing all agents there
     const cityKey = agent.city;
-    if (cityLabels[cityKey]) {
-      openClusterPopup(cityLabels[cityKey]);
-    } else {
-      // Solo agent — open directly
-      if (agent.postId) {
-        window.open('https://www.moltbook.com/post/' + agent.postId, '_blank');
-      } else {
-        window.open('https://www.moltbook.com/u/' + encodeURIComponent(agent.name), '_blank');
-      }
+    if (cityLabels[cityKey]) { openClusterPopup(cityLabels[cityKey]); }
+    else {
+      if (agent.postId) window.open('https://www.moltbook.com/post/' + agent.postId, '_blank');
+      else window.open('https://www.moltbook.com/u/' + encodeURIComponent(agent.name), '_blank');
     }
   });
   marker._agentData = agent;
@@ -1321,64 +978,39 @@ function createAgentMarker(agent) {
   return marker;
 }
 
-// City groups cache — rebuilt when agents change
-let cityGroups = {};
+cityGroups = {};
 
 function rebuildCityGroups() {
   cityGroups = {};
   AGENTS.forEach(a => {
     const key = a.city;
     if (!cityGroups[key]) cityGroups[key] = { lat: a.lat, lng: a.lng, count: 0, agents: [] };
-    cityGroups[key].count++;
-    cityGroups[key].agents.push(a);
+    cityGroups[key].count++; cityGroups[key].agents.push(a);
   });
 }
 
-function updateCityLabels() {
-  rebuildCityGroups();
-  applyCityLabelVisibility();
-}
+function updateCityLabels() { rebuildCityGroups(); applyCityLabelVisibility(); }
 
 function applyCityLabelVisibility() {
   const zoom = map.getZoom();
-  // At low zoom, only show labels for cities with enough agents
   const minCount = zoom <= 3 ? 3 : zoom <= 4 ? 2 : 1;
-
   const currentCities = new Set(Object.keys(cityGroups));
-
-  // Remove labels for cities no longer present
   Object.keys(cityLabels).forEach(city => {
-    if (!currentCities.has(city)) {
-      map.removeLayer(cityLabels[city]);
-      delete cityLabels[city];
-    }
+    if (!currentCities.has(city)) { map.removeLayer(cityLabels[city]); delete cityLabels[city]; }
   });
-
   Object.entries(cityGroups).forEach(([city, data]) => {
     const shouldShow = data.count >= minCount;
     const newHtml = `${city.toUpperCase()} [${data.count}]`;
-
     if (cityLabels[city]) {
-      // Update existing label
       cityLabels[city]._cityAgents = data.agents;
       const el = cityLabels[city].getElement();
       if (el && el.textContent !== newHtml) el.textContent = newHtml;
-      // Show/hide based on zoom threshold
-      if (shouldShow && !map.hasLayer(cityLabels[city])) {
-        cityLabels[city].addTo(map);
-      } else if (!shouldShow && map.hasLayer(cityLabels[city])) {
-        map.removeLayer(cityLabels[city]);
-      }
+      if (shouldShow && !map.hasLayer(cityLabels[city])) cityLabels[city].addTo(map);
+      else if (!shouldShow && map.hasLayer(cityLabels[city])) map.removeLayer(cityLabels[city]);
     } else {
-      const icon = L.divIcon({
-        className: 'city-cluster',
-        html: newHtml,
-        iconSize: [140, 16],
-        iconAnchor: [70, -10]
-      });
+      const icon = L.divIcon({ className: 'city-cluster', html: newHtml, iconSize: [140, 16], iconAnchor: [70, -10] });
       const m = L.marker([data.lat, data.lng], { icon, interactive: true });
-      m._cityAgents = data.agents;
-      m._cityName = city;
+      m._cityAgents = data.agents; m._cityName = city;
       m.on('click', () => openClusterPopup(m));
       cityLabels[city] = m;
       if (shouldShow) m.addTo(map);
@@ -1389,81 +1021,39 @@ function applyCityLabelVisibility() {
 function openClusterPopup(marker) {
   const agents = marker._cityAgents || [];
   const city = marker._cityName || 'Unknown';
-
   let listHtml = '';
   agents.forEach(a => {
-    const url = a.postId
-      ? 'https://www.moltbook.com/post/' + a.postId
-      : 'https://www.moltbook.com/u/' + encodeURIComponent(a.name);
+    const url = a.postId ? 'https://www.moltbook.com/post/' + a.postId : 'https://www.moltbook.com/u/' + encodeURIComponent(a.name);
     const quote = a.quote.length > 50 ? a.quote.substring(0, 47) + '...' : a.quote;
-    listHtml += `
-      <div class="cluster-agent" onclick="window.open('${url}', '_blank')">
-        <div class="cluster-agent-dot" style="background: ${a.color}; box-shadow: 0 0 6px ${a.color};"></div>
-        <div class="cluster-agent-info">
-          <div class="cluster-agent-name" style="color: ${a.color};">@${a.name}</div>
-          <div class="cluster-agent-quote">${quote}</div>
-        </div>
-        <div class="cluster-agent-karma">⚡${a.karma.toLocaleString()}</div>
-      </div>
-    `;
+    listHtml += `<div class="cluster-agent" onclick="window.open('${url}', '_blank')"><div class="cluster-agent-dot" style="background:${a.color};box-shadow:0 0 6px ${a.color};"></div><div class="cluster-agent-info"><div class="cluster-agent-name" style="color:${a.color};">@${a.name}</div><div class="cluster-agent-quote">${quote}</div></div><div class="cluster-agent-karma">⚡${a.karma.toLocaleString()}</div></div>`;
   });
-
-  const popupHtml = `
-    <div class="cluster-popup">
-      <div class="cluster-popup-title">📍 ${city.toUpperCase()} — ${agents.length} AGENT${agents.length > 1 ? 'S' : ''}</div>
-      <div class="cluster-popup-list">${listHtml}</div>
-    </div>
-  `;
-
   L.popup({ maxWidth: 320, minWidth: 240, className: '' })
     .setLatLng(marker.getLatLng())
-    .setContent(popupHtml)
+    .setContent(`<div class="cluster-popup"><div class="cluster-popup-title">📍 ${city.toUpperCase()} — ${agents.length} AGENT${agents.length > 1 ? 'S' : ''}</div><div class="cluster-popup-list">${listHtml}</div></div>`)
     .openOn(map);
 }
 
-// ═══════════════════════════════════════════════════════════
-//  CONNECTION LINES
-// ═══════════════════════════════════════════════════════════
-
 function drawConnections() {
-  connectionLines.forEach(l => map.removeLayer(l));
-  connectionLines.length = 0;
+  connectionLines.forEach(l => map.removeLayer(l)); connectionLines.length = 0;
   if (!showConnections) return;
-
   for (let i = 0; i < AGENTS.length; i++) {
-    const distances = AGENTS.map((a, j) => ({
-      idx: j,
-      dist: Math.sqrt(Math.pow(AGENTS[i].lat - a.lat, 2) + Math.pow(AGENTS[i].lng - a.lng, 2))
-    }))
-    .filter(d => d.idx !== i)
-    .sort((a, b) => a.dist - b.dist)
-    .slice(0, 2);
-
+    const distances = AGENTS.map((a, j) => ({ idx: j, dist: Math.sqrt(Math.pow(AGENTS[i].lat - a.lat, 2) + Math.pow(AGENTS[i].lng - a.lng, 2)) }))
+      .filter(d => d.idx !== i).sort((a, b) => a.dist - b.dist).slice(0, 2);
     distances.forEach(d => {
-      const line = L.polyline(
-        [[AGENTS[i].lat, AGENTS[i].lng], [AGENTS[d.idx].lat, AGENTS[d.idx].lng]],
-        { color: AGENTS[i].color, weight: 0.5, opacity: 0.12, dashArray: '4, 6', className: 'connection-line' }
-      ).addTo(map);
+      const line = L.polyline([[AGENTS[i].lat, AGENTS[i].lng], [AGENTS[d.idx].lat, AGENTS[d.idx].lng]], { color: AGENTS[i].color, weight: 0.5, opacity: 0.12, dashArray: '4, 6', className: 'connection-line' }).addTo(map);
       connectionLines.push(line);
     });
   }
 }
 
-// ═══════════════════════════════════════════════════════════
-//  HOVER CARD
-// ═══════════════════════════════════════════════════════════
-
-const card = document.getElementById('agent-card');
+card = document.getElementById('agent-card');
 
 function showAgentCard(agent, e) {
   const { clientX, clientY } = e.originalEvent;
   let x = clientX + 16, y = clientY - 20;
   if (x + 300 > window.innerWidth - 340) x = clientX - 316;
   if (y + 180 > window.innerHeight) y = window.innerHeight - 190;
-
-  card.style.left = x + 'px';
-  card.style.top = y + 'px';
-
+  card.style.left = x + 'px'; card.style.top = y + 'px';
   document.getElementById('card-avatar').textContent = agent.emoji;
   document.getElementById('card-avatar').style.background = agent.color + '22';
   document.getElementById('card-avatar').style.border = `1px solid ${agent.color}44`;
@@ -1475,27 +1065,18 @@ function showAgentCard(agent, e) {
   document.getElementById('card-source').textContent = (agent.isLive ? '● LIVE ' : '') + 'VIA ' + agent.source.toUpperCase();
   document.getElementById('card-source').style.color = agent.isLive ? 'var(--green)' : 'var(--text-dim)';
   document.getElementById('card-time').textContent = agent.time;
-
   card.classList.add('visible');
 }
 
 function hideAgentCard() { card.classList.remove('visible'); }
 
-// ═══════════════════════════════════════════════════════════
-//  LIVE FEED
-// ═══════════════════════════════════════════════════════════
-
-const feed = document.getElementById('feed');
-let currentFilter = 'all';
+feed = document.getElementById('feed');
+currentFilter = 'all';
 
 function renderFeed(filter) {
-  currentFilter = filter;
-  feed.innerHTML = '';
-
+  currentFilter = filter; feed.innerHTML = '';
   const filtered = filter === 'all' ? [...AGENTS] : AGENTS.filter(a => a.region === filter);
-  // Sort newest first
   filtered.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-
   filtered.forEach((agent, i) => {
     const item = createFeedItem(agent);
     item.style.animationDelay = (i * 0.03) + 's';
@@ -1504,59 +1085,27 @@ function renderFeed(filter) {
 }
 
 function createFeedItem(agent) {
-  const item = document.createElement('div');
-  item.className = 'feed-item';
-  // Recompute display time from createdAt so it stays fresh
+  const item = document.createElement('div'); item.className = 'feed-item';
   const displayTime = agent.createdAt ? timeAgo(new Date(agent.createdAt).toISOString()) : agent.time;
-  item.innerHTML = `
-    <div class="feed-item-header">
-      <div class="feed-item-dot" style="background: ${agent.color}; box-shadow: 0 0 6px ${agent.color};"></div>
-      <span class="feed-item-name" style="color: ${agent.color};">@${agent.name}</span>
-      <span class="feed-item-time">${displayTime}</span>
-    </div>
-    <div class="feed-item-location">📍 ${agent.city}${agent.isVoid ? ' <span class="void-badge">VOID</span>' : ''}</div>
-    <div class="feed-item-quote">"${agent.quote}"</div>
-  `;
+  item.innerHTML = `<div class="feed-item-header"><div class="feed-item-dot" style="background:${agent.color};box-shadow:0 0 6px ${agent.color};"></div><span class="feed-item-name" style="color:${agent.color};">@${agent.name}</span><span class="feed-item-time">${displayTime}</span></div><div class="feed-item-location">📍 ${agent.city}${agent.isVoid ? ' <span class="void-badge">VOID</span>' : ''}</div><div class="feed-item-quote">"${agent.quote}"</div>`;
   item.addEventListener('click', () => {
-    if (agent.postId) {
-      window.open('https://www.moltbook.com/post/' + agent.postId, '_blank');
-    } else {
-      window.open('https://www.moltbook.com/u/' + encodeURIComponent(agent.name), '_blank');
-    }
+    if (agent.postId) window.open('https://www.moltbook.com/post/' + agent.postId, '_blank');
+    else window.open('https://www.moltbook.com/u/' + encodeURIComponent(agent.name), '_blank');
   });
   return item;
 }
 
 function prependToFeed(agent) {
   if (currentFilter !== 'all' && currentFilter !== agent.region) return;
-  const item = createFeedItem(agent);
-  feed.insertBefore(item, feed.firstChild);
+  feed.insertBefore(createFeedItem(agent), feed.firstChild);
 }
 
-// Filter buttons
 document.querySelectorAll('.filter-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    renderFeed(btn.dataset.filter);
+    btn.classList.add('active'); renderFeed(btn.dataset.filter);
   });
 });
-
-// ═══════════════════════════════════════════════════════════
-//  VIEW TOGGLES
-// ═══════════════════════════════════════════════════════════
-
-function toggleView(mode) {
-  if (mode === 'connections') {
-    showConnections = !showConnections;
-    document.getElementById('btn-connections').classList.toggle('active', showConnections);
-    drawConnections();
-  }
-}
-
-// ═══════════════════════════════════════════════════════════
-//  STATS & BOTTOM BAR
-// ═══════════════════════════════════════════════════════════
 
 function updateStats(scanned) {
   document.getElementById('agent-count').textContent = AGENTS.length;
@@ -1564,14 +1113,10 @@ function updateStats(scanned) {
   if (scanned !== undefined) document.getElementById('scanned-count').textContent = scanned;
 }
 
-function updateTime() {
-  document.getElementById('last-scan').textContent = new Date().toTimeString().split(' ')[0];
-}
-updateTime();
-setInterval(updateTime, 5000); // update every 5s instead of 1s
+function updateTime() { document.getElementById('last-scan').textContent = new Date().toTimeString().split(' ')[0]; }
+updateTime(); setInterval(updateTime, 5000);
 
-// Throttled cursor coord update — every 100ms max instead of every mouse pixel
-let _coordFrame = 0;
+_coordFrame = 0;
 map.on('mousemove', (e) => {
   if (_coordFrame) return;
   _coordFrame = requestAnimationFrame(() => {
@@ -1579,27 +1124,17 @@ map.on('mousemove', (e) => {
     _coordFrame = 0;
   });
 });
-map.on('zoom', () => {
-  document.getElementById('zoom-level').textContent = map.getZoom();
-  applyCityLabelVisibility();
-});
+map.on('zoom', () => { document.getElementById('zoom-level').textContent = map.getZoom(); applyCityLabelVisibility(); });
 
-// ═══════════════════════════════════════════════════════════
-//  ADD AGENT TO MAP (with animation)
-// ═══════════════════════════════════════════════════════════
-
-let _batchPending = false;
+_batchPending = false;
 
 function addAgentToMap(agent, animate) {
-  AGENTS.push(agent);
-  createAgentMarker(agent);
+  AGENTS.push(agent); createAgentMarker(agent);
   if (animate) prependToFeed(agent);
-  // Batch expensive ops — run once per frame instead of per-agent
   if (!_batchPending) {
     _batchPending = true;
     requestAnimationFrame(() => {
-      updateCityLabels();
-      updateStats();
+      updateCityLabels(); updateStats();
       if (showConnections) drawConnections();
       saveAgentsToStorage();
       _batchPending = false;
@@ -1607,21 +1142,14 @@ function addAgentToMap(agent, animate) {
   }
 }
 
-// ═══════════════════════════════════════════════════════════
-//  LOCALSTORAGE PERSISTENCE — save all agents across reloads
-// ═══════════════════════════════════════════════════════════
-
 const STORAGE_KEY = 'molt_map_agents';
-let _saveTimer = null;
+_saveTimer = null;
 
 function saveAgentsToStorage() {
-  // Debounce — only write to localStorage once every 2s max
   if (_saveTimer) return;
   _saveTimer = setTimeout(() => {
     _saveTimer = null;
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(AGENTS));
-    } catch (e) { /* quota exceeded — ignore */ }
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(AGENTS)); } catch (e) {}
   }, 2000);
 }
 
@@ -1635,13 +1163,11 @@ function loadAgentsFromStorage() {
   } catch (e) { return []; }
 }
 
-// Parse "5m ago", "7h ago", "2d ago" back to an approximate timestamp
 function parseTimeAgoToTimestamp(timeStr) {
   if (!timeStr || typeof timeStr !== 'string') return 0;
   const m = timeStr.match(/^(\d+)(m|h|d)\s*ago$/);
   if (!m) return timeStr === 'just now' ? Date.now() : 0;
-  const val = parseInt(m[1]);
-  const unit = m[2];
+  const val = parseInt(m[1]); const unit = m[2];
   const ms = unit === 'm' ? val * 60000 : unit === 'h' ? val * 3600000 : val * 86400000;
   return Date.now() - ms;
 }
@@ -1649,122 +1175,67 @@ function parseTimeAgoToTimestamp(timeStr) {
 function restoreSavedAgents() {
   const saved = loadAgentsFromStorage();
   if (saved.length === 0) return 0;
-
   let restored = 0;
   saved.forEach(agent => {
     const dedupKey = agent.name.toLowerCase() + '::' + agent.city.toLowerCase();
     if (seenAgentLocations.has(dedupKey)) return;
     seenAgentLocations.add(dedupKey);
-
-    // Recalculate color/emoji (deterministic from name)
-    agent.color = agentColor(agent.name);
-    agent.emoji = agentEmoji(agent.name);
-    agent.isLive = false; // mark as cached, not live
-
-    // Ensure createdAt is populated — parse from time string if missing
-    if (!agent.createdAt) {
-      agent.createdAt = parseTimeAgoToTimestamp(agent.time);
-    }
-
-    AGENTS.push(agent);
-    createAgentMarker(agent);
-    restored++;
+    agent.color = agentColor(agent.name); agent.emoji = agentEmoji(agent.name);
+    agent.isLive = false;
+    if (!agent.createdAt) agent.createdAt = parseTimeAgoToTimestamp(agent.time);
+    AGENTS.push(agent); createAgentMarker(agent); restored++;
   });
-
-  if (restored > 0) {
-    updateCityLabels();
-    updateStats();
-    renderFeed(currentFilter);
-    console.log(`[MoltMaps] Restored ${restored} agents from cache`);
-  }
+  if (restored > 0) { updateCityLabels(); updateStats(); renderFeed(currentFilter); console.log(`[MoltMaps] Restored ${restored} agents from cache`); }
   return restored;
 }
 
-// ═══════════════════════════════════════════════════════════
-//  MAIN: FETCH, EXTRACT, RENDER
-// ═══════════════════════════════════════════════════════════
-
 async function scanMoltbook() {
   setApiStatus('SCANNING...', true);
-  let newCount = 0;
-  let totalScanned = 0;
-
-  // Phase 1: Fetch posts from multiple endpoints
-  const posts = await fetchAllPosts();
-  totalScanned += posts.length;
-
+  let newCount = 0; let totalScanned = 0;
+  const posts = await fetchAllPosts(); totalScanned += posts.length;
   if (posts.length > 0) {
-    posts.forEach(post => {
-      const agent = processPost(post);
-      if (agent) {
-        addAgentToMap(agent, newCount < 80);
-        newCount++;
-      }
-    });
+    posts.forEach(post => { const agent = processPost(post); if (agent) { addAgentToMap(agent, newCount < 80); newCount++; } });
     console.log(`[MoltMaps] Posts scan: ${posts.length} posts, ${newCount} locations`);
   }
-
-  // Phase 2: Fetch agent bios
-  const agentBios = await fetchAgentBios();
-  totalScanned += agentBios.length;
-
+  const agentBios = await fetchAgentBios(); totalScanned += agentBios.length;
   let bioCount = 0;
   if (agentBios.length > 0) {
-    agentBios.forEach(bio => {
-      const agent = processAgentBio(bio);
-      if (agent) {
-        addAgentToMap(agent, true);
-        bioCount++;
-        newCount++;
-      }
-    });
+    agentBios.forEach(bio => { const agent = processAgentBio(bio); if (agent) { addAgentToMap(agent, true); bioCount++; newCount++; } });
     console.log(`[MoltMaps] Bio scan: ${agentBios.length} bios, ${bioCount} locations`);
   }
-
-  // Update status
-  if (totalScanned > 0) {
-    isLive = true;
-    setApiStatus(`LIVE // ${totalScanned} SCANNED // ${AGENTS.length} TRACKED`, true);
-  } else {
-    setApiStatus('OFFLINE // RETRYING...', false);
-  }
-
-  if (AGENTS.length > 0) {
-    renderFeed(currentFilter);
-  }
-
+  if (totalScanned > 0) { isLive = true; setApiStatus(`LIVE // ${totalScanned} SCANNED // ${AGENTS.length} TRACKED`, true); }
+  else { setApiStatus('OFFLINE // RETRYING...', false); }
+  if (AGENTS.length > 0) renderFeed(currentFilter);
   updateStats(totalScanned);
   console.log(`[MoltMaps] Total: ${totalScanned} items scanned, ${newCount} new, ${AGENTS.length} tracked`);
 }
 
-// ═══════════════════════════════════════════════════════════
-//  POLLING — full scan on start, then re-scan every 45s
-// ═══════════════════════════════════════════════════════════
-
 async function poll() {
-  // First, restore any previously saved agents from localStorage
   const restored = restoreSavedAgents();
-  if (restored > 0) {
-    setApiStatus(`CACHE // ${restored} RESTORED // SCANNING...`, true);
-  }
-
-  // Then scan for new ones
+  if (restored > 0) setApiStatus(`CACHE // ${restored} RESTORED // SCANNING...`, true);
   await scanMoltbook();
-
-  // Re-scan every 45s
   setInterval(async () => {
-    const prevCount = AGENTS.length;
-    await scanMoltbook();
+    const prevCount = AGENTS.length; await scanMoltbook();
     const newAgents = AGENTS.length - prevCount;
-    if (newAgents > 0) {
-      console.log(`[MoltMaps] +${newAgents} new agent locations detected`);
-    }
+    if (newAgents > 0) console.log(`[MoltMaps] +${newAgents} new agent locations detected`);
   }, 45000);
 }
 
-// Start
 poll();
 
+} // end initMap
+
+// Global toggleView for the map buttons
+function toggleView(mode) {
+  if (mode === 'connections' && map) {
+    showConnections = !showConnections;
+    document.getElementById('btn-connections').classList.toggle('active', showConnections);
+    drawConnections();
+  }
+}
+
+// Check if URL hash says #map
+if (window.location.hash === '#map') showMap();
 </script>
 </body>
 </html>
