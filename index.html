@@ -140,8 +140,13 @@
      ════════════════════════════════════════════════════════════ -->
 <div id="landing-view" class="landing-page" style="font-family: 'Plus Jakarta Sans', sans-serif;">
 
+  <!-- SOLANA BANNER -->
+  <div class="fixed top-0 left-0 right-0 z-50 bg-gradient-to-r from-[#9945FF]/10 via-[#14F195]/10 to-[#9945FF]/10 border-b border-[#14F195]/20 text-center py-1.5 px-4">
+    <span class="text-[11px] tracking-widest uppercase text-[#14F195]/70 font-medium">$moltmaps — coming soon on <span class="text-[#14F195]">Solana</span></span>
+  </div>
+
   <!-- NAVBAR -->
-  <nav class="fixed top-0 left-0 right-0 z-50 flex items-center justify-center px-4 py-3">
+  <nav class="fixed top-[33px] left-0 right-0 z-50 flex items-center justify-center px-4 py-3">
     <div class="flex items-center justify-between w-full max-w-[1000px] rounded-lg bg-[#09090A] border border-neutral-900 px-5 py-2.5">
       <div class="flex items-center gap-8">
         <a href="#" class="flex items-center">
@@ -154,7 +159,10 @@
           <a href="#blog" class="text-white text-sm font-medium px-3 py-1.5 rounded-md hover:bg-white/5 transition">Whitepaper</a>
         </div>
       </div>
-      <div class="flex items-center gap-2">
+      <div class="flex items-center gap-3">
+        <a href="https://moltmaps.io" target="_blank" class="text-[#71717A] hover:text-white transition">
+          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+        </a>
         <button onclick="showMap()" class="flex items-center gap-1 bg-[#AFC2C8] text-black text-[14px] font-semibold px-5 py-2 rounded-lg hover:opacity-90 transition cursor-pointer">Go To Maps <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></button>
       </div>
     </div>
